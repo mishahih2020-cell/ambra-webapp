@@ -1,4 +1,4 @@
-// ===== AMBRA webapp — vanilla JS SPA, hash-router, no build step =====
+// ===== Горчит webapp — vanilla JS SPA, hash-router, no build step =====
 
 const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
 
@@ -90,7 +90,7 @@ function svgIcon(pathHtml, size, extraClass){
 /* ---------- shell pieces ---------- */
 function headerBrand(){
   return '<div class="tg-header">'+
-    '<div class="brand"><div class="brand-mark">A</div><div class="brand-name">AMBRA</div></div>'+
+    '<div class="brand"><div class="brand-mark">Г</div><div class="brand-name">ГОРЧИТ</div></div>'+
     '<button class="icon-btn" data-nav="promotions">'+svgIcon(ICONS.bell,18)+'</button>'+
   '</div>';
 }
@@ -171,8 +171,8 @@ function goBack(){
 function viewOnboarding(){
   return '<div style="flex:1;display:flex;flex-direction:column;">'+
     '<div style="flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 30%,#211A11 0%,#15110D 65%);">'+
-      '<div style="width:64px;height:64px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><span class="serif" style="font-size:28px;color:var(--brass-soft);">A</span></div>'+
-      '<div class="serif" style="font-size:36px;letter-spacing:6px;color:var(--cream);">AMBRA</div>'+
+      '<div style="width:64px;height:64px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><span class="serif" style="font-size:28px;color:var(--brass-soft);">Г</span></div>'+
+      '<div class="serif" style="font-size:34px;letter-spacing:5px;color:var(--cream);">ГОРЧИТ</div>'+
       '<div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--text-tertiary);margin-top:8px;font-weight:600;">Табак &amp; кальянная культура</div>'+
     '</div>'+
     '<div style="background:var(--bg-elev);border-top-left-radius:28px;border-top-right-radius:28px;padding:26px 24px calc(24px + var(--tg-safe-bottom));display:flex;flex-direction:column;gap:16px;">'+

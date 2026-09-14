@@ -28,4 +28,4 @@ http.createServer((req, res) => {
     res.writeHead(200, {'Content-Type': MIME[ext] || 'application/octet-stream'});
     res.end(data);
   });
-}).listen(PORT, () => console.log('AMBRA webapp running at http://localhost:' + PORT));
+}).listen(PORT, () => console.log('Горчит webapp running at http://localhost:' + PORT));

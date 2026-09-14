@@ -62,10 +62,10 @@ const PRODUCTS = [
   {id:'phunnel-m', category:'bowls', brand:'Чаши', name:'Phunnel M', volumeDefault:'', price:1290, badge:null, rating:4.8, reviews:44,
     flavors:[], strengths:[], strengthDefault:0, volumes:['M','L'], volumeIndex:0,
     description:'Керамическая чаша фаннел для плотного дыма и равномерного прогрева табака.'},
-  {id:'hookah-overdose', category:'hookahs', brand:'AMBRA Lounge', name:'Кальян Overdose 72см', volumeDefault:'', price:12900, badge:'hit', rating:4.9, reviews:76,
+  {id:'hookah-overdose', category:'hookahs', brand:'ГОРЧИТ Lounge', name:'Кальян Overdose 72см', volumeDefault:'', price:12900, badge:'hit', rating:4.9, reviews:76,
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Флагманская модель для домашних и лаунж-сессий. Тройная система очистки дыма.'},
-  {id:'acc-tongs', category:'accessories', brand:'AMBRA', name:'Щипцы для углей', volumeDefault:'', price:990, badge:null, rating:4.7, reviews:23,
+  {id:'acc-tongs', category:'accessories', brand:'ГОРЧИТ', name:'Щипцы для углей', volumeDefault:'', price:990, badge:null, rating:4.7, reviews:23,
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Нержавеющая сталь, удобный хват, подходит для любых углей.'},
 ];
