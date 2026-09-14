@@ -24,7 +24,11 @@ const ICONS = {
   wifiOff: '<path d="M2 8.8a16 16 0 0120 0"/><path d="M5.5 12.5a11 11 0 0113 0"/><path d="M9 16a6 6 0 016 0"/><path d="M12 20h.01"/><path d="M3 3l18 18"/>',
   box: '<path d="M4 4h16v5H4z"/><path d="M4 9l1.5 11h13L20 9"/><path d="M9 13h6"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>',
-  support: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .5c0 1.7-2.5 2-2.5 3.5"/><path d="M12 17h.01"/>'
+  support: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .5c0 1.7-2.5 2-2.5 3.5"/><path d="M12 17h.01"/>',
+  wheel: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>',
+  users: '<circle cx="9" cy="8" r="3"/><path d="M2 20c1-3.5 3.5-5.5 7-5.5s6 2 7 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.6c2.7.4 4 2 4.7 5.4"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
+  share: '<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4"/>'
 };
 function icon(name, size){size=size||20;return '<svg class="icon" width="'+size+'" height="'+size+'" viewBox="0 0 24 24">'+ICONS[name]+'</svg>';}
 
@@ -96,3 +100,31 @@ const PROMOTIONS = [
 ];
 
 const RECENT_SEARCHES = ['Двойное яблоко', 'Угли кокосовые', 'Overdose'];
+
+/* ---------- лояльность ---------- */
+const TIERS = [
+  {name:'Silver', threshold:0, cashback:0.05},
+  {name:'Gold', threshold:15000, cashback:0.07},
+  {name:'Platinum', threshold:50000, cashback:0.10},
+];
+
+/* ---------- реферальная программа ---------- */
+const REFERRAL_REWARD = 200;
+const REFERRALS = [
+  {name:'Игорь П.', date:'10 сентября', status:'ordered', reward:200},
+  {name:'Мария С.', date:'5 сентября', status:'pending', reward:0},
+];
+
+/* ---------- колесо фортуны ---------- */
+const WHEEL_PRIZES = [
+  {label:'+20', type:'bonus', value:20, title:'+20 бонусов', color:'#241D15'},
+  {label:'+50', type:'bonus', value:50, title:'+50 бонусов', color:'#4A3A20'},
+  {label:'−10%', type:'promo', code:'WHEEL10', discount:0.10, title:'Промокод −10%', color:'#241D15'},
+  {label:'+100', type:'bonus', value:100, title:'+100 бонусов', color:'#4A3A20'},
+  {label:'0 ₽', type:'freeDelivery', title:'Бесплатная доставка', color:'#241D15'},
+  {label:'+200', type:'bonus', value:200, title:'+200 бонусов', color:'#4A3A20'},
+  {label:'↻', type:'again', title:'Ещё одна попытка', color:'#241D15'},
+  {label:'+30', type:'bonus', value:30, title:'+30 бонусов', color:'#4A3A20'},
+];
+const WHEEL_WEIGHTS = [18, 15, 8, 10, 12, 5, 20, 12];
+
