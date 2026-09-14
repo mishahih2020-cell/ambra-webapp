@@ -73,6 +73,44 @@ function getReferralCode(){
 }
 function getReferralLink(){ return location.origin + location.pathname.replace(/index\.html$/,'') + '?ref=' + getReferralCode(); }
 
+/* ---------- декоративный QR для карты лояльности (не для сканирования, только визуал) ---------- */
+function seededRandom(seed){ let s = seed % 2147483647; if(s<=0) s += 2147483646; return function(){ s = (s*16807) % 2147483647; return (s-1)/2147483646; }; }
+function qrPlaceholderSvg(seedText){
+  const n = 21, cell = 8, size = n*cell;
+  const seed = (seedText||'GRCH').split('').reduce((a,c)=>a+c.charCodeAt(0)*7,1);
+  const rand = seededRandom(seed);
+  function isFinderZone(r,c){ return (r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7); }
+  function finder(r0,c0){
+    let s='';
+    for(let r=0;r<7;r++) for(let c=0;c<7;c++){
+      const border = r===0||r===6||c===0||c===6;
+      const inner = r>=2&&r<=4&&c>=2&&c<=4;
+      if(border||inner) s += '<rect x="'+(c0+c)*cell+'" y="'+(r0+r)*cell+'" width="'+cell+'" height="'+cell+'" fill="#15110D"/>';
+    }
+    return s;
+  }
+  let cells = '';
+  for(let r=0;r<n;r++){
+    for(let c=0;c<n;c++){
+      if(isFinderZone(r,c)) continue;
+      if(rand()>0.55) cells += '<rect x="'+c*cell+'" y="'+r*cell+'" width="'+cell+'" height="'+cell+'" fill="#15110D"/>';
+    }
+  }
+  cells += finder(0,0) + finder(0,n-7) + finder(n-7,0);
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="display:block;">'+cells+'</svg>';
+}
+function loyaltyQrCard(){
+  const code = getReferralCode();
+  return '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:16px;">'+
+    '<div style="padding:10px;background:#F3ECE0;border-radius:12px;">'+qrPlaceholderSvg(code)+'</div>'+
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
+      '<span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);">Номер карты</span>'+
+      '<span class="serif" style="font-size:16px;letter-spacing:2px;color:var(--cream);">'+code+'</span>'+
+    '</div>'+
+    '<span style="font-size:11px;color:var(--text-tertiary);text-align:center;max-width:260px;line-height:1.5;">Покажите QR-код на кассе, чтобы применить бонусы и скидку уровня '+currentTier().name+'</span>'+
+  '</div>';
+}
+
 /* ---------- колесо фортуны ---------- */
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function dailySpinAvailable(){ return STATE.wheelLastFreeSpinDate !== todayStr(); }
@@ -583,6 +621,10 @@ function viewProfile(){
       '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="eyebrow" style="color:var(--brass-soft);">Уровень '+tier.name+'</div><div style="font-size:11px;color:var(--text-secondary);">кэшбэк '+Math.round(tier.cashback*100)+'%</div></div>'+
       '<div class="serif" style="font-size:30px;color:var(--cream);">'+STATE.bonusBalance+' бонусов</div>'+
       (prog.nextName ? '<div style="display:flex;flex-direction:column;gap:6px;"><div style="height:6px;border-radius:3px;background:#3A2E1A;overflow:hidden;"><div style="width:'+prog.pct+'%;height:100%;background:linear-gradient(90deg,var(--brass),var(--brass-soft));"></div></div><div style="font-size:11px;color:var(--text-secondary);">До уровня '+prog.nextName+' — '+formatPrice(prog.remaining)+' покупок</div></div>' : '<div style="font-size:11px;color:var(--text-secondary);">Максимальный уровень достигнут</div>')+
+      '<details class="loyalty-qr-toggle">'+
+        '<summary>Показать карту лояльности'+svgIcon(ICONS.chevronRight,14,'chev')+'</summary>'+
+        loyaltyQrCard()+
+      '</details>'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;">'+
       '<button class="list-row" data-nav="wheel"><span style="flex:1;font-size:14px;font-weight:600;">Колесо фортуны</span>'+(spins>0?'<span class="badge badge-hit" style="margin-right:8px;">'+spins+'</span>':'')+svgIcon(ICONS.chevronRight,14,'chev')+'</button>'+
