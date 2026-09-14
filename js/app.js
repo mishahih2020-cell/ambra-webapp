@@ -144,15 +144,31 @@ window.addEventListener('DOMContentLoaded', init);
 
 function navigate(hash){ location.hash = hash; }
 
+// Реальная высота видимой области Telegram (учитывает шторку клавиатуры, safe area,
+// разницу между "развёрнуто" и "на весь экран") — надёжнее чем 100vh/100dvh в WebView.
+function applyViewportHeight(){
+  const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight
+          : (tg && tg.viewportHeight) ? tg.viewportHeight
+          : window.innerHeight;
+  document.documentElement.style.setProperty('--tg-viewport-height', h + 'px');
+}
+
 function init(){
   if(tg){
     tg.ready();
     tg.expand();
+    try{ tg.requestFullscreen && tg.requestFullscreen(); }catch(e){}
+    try{ tg.disableVerticalSwipes && tg.disableVerticalSwipes(); }catch(e){}
     try{
       tg.setHeaderColor('#15110D');
       tg.setBackgroundColor('#15110D');
     }catch(e){}
+    if(tg.onEvent){ tg.onEvent('viewportChanged', applyViewportHeight); tg.onEvent('fullscreenChanged', applyViewportHeight); }
   }
+  applyViewportHeight();
+  window.addEventListener('resize', applyViewportHeight);
+  window.addEventListener('orientationchange', applyViewportHeight);
+
   const refFromUrl = new URLSearchParams(location.search).get('ref');
   if(refFromUrl && !localStorage.getItem('ambra_referred_by')) localStorage.setItem('ambra_referred_by', refFromUrl);
   document.addEventListener('click', onGlobalClick);
