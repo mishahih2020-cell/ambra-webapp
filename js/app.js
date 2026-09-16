@@ -328,13 +328,17 @@ function viewOnboarding(){
   '</div>';
 }
 
+function photoImg(url, alt){
+  return url ? '<img src="'+url+'" alt="'+(alt||'').replace(/"/g,'&quot;')+'" loading="lazy" onerror="this.remove()">' : '';
+}
+
 function productCardHtml(p, wide){
   const fav = isFav(p.id);
   const badge = p.badge==='sale' ? '<div class="badge badge-sale" style="position:absolute;top:8px;left:8px;">-'+Math.round((1-p.price/p.oldPrice)*100)+'%</div>'
     : p.badge==='new' ? '<div class="badge badge-new" style="position:absolute;top:8px;left:8px;">NEW</div>'
     : p.badge==='hit' ? '<div class="badge badge-hit" style="position:absolute;top:8px;left:8px;">ХИТ</div>' : '';
   return '<div class="product-card'+(wide?' wide':'')+'" data-nav="product/'+p.id+'">'+
-    '<div class="product-photo">'+badge+
+    '<div class="product-photo">'+photoImg(p.image,p.name)+badge+
       '<button class="product-fav" data-action="toggle-fav" data-id="'+p.id+'" style="color:'+(fav?'var(--brass-soft)':'#F3ECE0')+';">'+svgIcon(fav?ICONS.heartFill:ICONS.heart,18)+'</button>'+
     '</div>'+
     '<div class="product-body">'+
@@ -439,7 +443,7 @@ function viewProduct(id){
   const total = p.price * sel.qty;
   return headerBack('', '<div style="display:flex;gap:8px;"><button class="icon-btn" data-action="toggle-fav" data-id="'+p.id+'" style="'+(isFav(p.id)?'color:var(--brass-soft)':'')+'">'+svgIcon(isFav(p.id)?ICONS.heartFill:ICONS.heart,18)+'</button></div>')+
   '<div class="content"><div style="display:flex;flex-direction:column;">'+
-    '<div style="height:270px;background:linear-gradient(160deg,#2A2116,#171109);flex-shrink:0;"></div>'+
+    '<div class="thumb-photo" style="height:270px;border-radius:0;flex-shrink:0;">'+photoImg(p.image,p.name)+'</div>'+
     '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:18px;">'+
       '<div style="display:flex;flex-direction:column;gap:6px;">'+
         '<div class="eyebrow">'+p.brand+'</div>'+
@@ -489,7 +493,7 @@ function cartItemRow(item){
   if(p.strengths.length) variantBits.push(p.strengths[item.strengthIndex]);
   if(p.volumes.length) variantBits.push(p.volumes[item.volumeIndex]);
   return '<div style="display:flex;gap:12px;background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:16px;padding:12px;">'+
-    '<div style="width:64px;height:64px;border-radius:12px;background:linear-gradient(160deg,#2A2116,#171109);flex-shrink:0;"></div>'+
+    '<div class="thumb-photo" style="width:64px;height:64px;">'+photoImg(p.image,p.name)+'</div>'+
     '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">'+
       '<div class="product-brand">'+p.brand+'</div>'+
       '<div style="font-size:13px;color:var(--cream);font-weight:700;">'+p.name+'</div>'+
@@ -693,7 +697,7 @@ function viewOrderDetail(id){
     '<div style="display:flex;flex-direction:column;gap:10px;">'+
       '<div class="eyebrow">Состав заказа</div>'+
       o.items.map(it=>{ const p=getProduct(it.productId); return '<div style="display:flex;gap:12px;">'+
-        '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(160deg,#2A2116,#171109);flex-shrink:0;"></div>'+
+        '<div class="thumb-photo" style="width:52px;height:52px;">'+photoImg(p.image,p.name)+'</div>'+
         '<div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;color:var(--cream);font-weight:700;">'+p.brand+' '+p.name+'</span><span style="font-size:11px;color:var(--text-tertiary);">× '+it.qty+'</span></div>'+
         '<span class="price" style="font-size:13px;">'+formatPrice(it.price*it.qty)+'</span>'+
       '</div>'; }).join('')+

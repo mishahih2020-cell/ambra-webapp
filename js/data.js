@@ -37,41 +37,72 @@ const CATEGORIES = [
   {id:'hookahs', name:'Кальяны', count:46},
   {id:'coal', name:'Угли', count:31},
   {id:'bowls', name:'Чаши', count:24},
-  {id:'accessories', name:'Аксессуары', count:57},
+  {id:'accessories', name:'Аксессуары', count:59},
+  {id:'vape', name:'Жидкости', count:34},
 ];
 const CATEGORY_ICON_PATH = {
   tobacco:'<path d="M12 2C9 6 8 9 8 12a4 4 0 008 0c0-1.2-.4-2.2-1.1-3.2.1 1.4-.6 2.2-1.4 2.2-1 0-1.2-.9-1-1.8.4-1.6-.2-3.4-1.5-4.2z"/>',
   hookahs:'<path d="M8 21h8M12 17v4M6 3h12l-1 9a5 5 0 01-10 0L6 3z"/>',
   coal:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
   bowls:'<path d="M7 3h10l-1 15a4 4 0 01-8 0L7 3z"/><path d="M7 9h10"/>',
-  accessories:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/>'
+  accessories:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/>',
+  vape:'<rect x="10" y="2" width="4" height="7" rx="1.5"/><path d="M8 9h8l1 4-1 9H9L8 13z"/><path d="M10 13h4"/>'
+};
+
+// Фото — открытые файлы Wikimedia Commons (свободные лицензии), отдаются через Special:FilePath.
+// Используются как наглядные категорийные фотографии, а не как студийная съёмка конкретного SKU.
+const IMG = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
+const PHOTO = {
+  tobaccoLeaf: IMG+'Ripe_tobacco_leaf_3037.JPG?width=500',
+  tobaccoPlant1: IMG+'Nicotiana_tabacum_002.JPG?width=500',
+  tobaccoPlant2: IMG+'Nicotiana_tabacum_004.JPG?width=500',
+  coal: IMG+'Charcoal_briquettes_Namibia.jpg?width=500',
+  bowl: IMG+'Hookah_0890.jpg?width=500',
+  hookah: IMG+'Hookah_2.jpg?width=500',
+  hose: IMG+'Hookah_2.jpg?width=500',
+  tongs: IMG+'Tongs1.JPG?width=500',
+  foil: IMG+'Aluminium_foil_closeup.jpg?width=500',
+  vape1: IMG+'Vape_juice.jpg?width=500',
+  vape2: IMG+'CBD_Vape_Oil_E-Liquid_Bottles.jpg?width=500',
 };
 
 const PRODUCTS = [
-  {id:'nox-apple', category:'tobacco', brand:'NOX Tobacco', name:'Двойное яблоко', volumeDefault:'100г', price:712, oldPrice:890, badge:'sale', rating:4.8, reviews:214,
+  {id:'nox-apple', category:'tobacco', brand:'NOX Tobacco', name:'Двойное яблоко', volumeDefault:'100г', price:712, oldPrice:890, badge:'sale', rating:4.8, reviews:214, image:PHOTO.tobaccoLeaf,
     flavors:['#C1553D','#8AA06B','#D9A441','#B8703F'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:1, volumes:['50г','100г','250г'], volumeIndex:1,
     description:'Насыщенная табачная смесь с ярким вкусом спелого яблока и лёгкой кислинкой. Плотный густой дым, стабильное раскуривание, среднее время сессии — 60–90 минут.'},
-  {id:'dune-peach', category:'tobacco', brand:'DUNE Line', name:'Персик со сливками', volumeDefault:'100г', price:820, badge:null, rating:4.6, reviews:98,
+  {id:'dune-peach', category:'tobacco', brand:'DUNE Line', name:'Персик со сливками', volumeDefault:'100г', price:820, badge:null, rating:4.6, reviews:98, image:PHOTO.tobaccoPlant1,
     flavors:['#D9A441','#C1553D','#8AA06B'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:0, volumes:['50г','100г','250г'], volumeIndex:1,
     description:'Кремовый вкус персика с нотами ванильных сливок. Мягкая смесь для долгих вечерних сессий.'},
-  {id:'onyx-grape', category:'tobacco', brand:'ONYX Blend', name:'Виноград-мята', volumeDefault:'100г', price:780, badge:'new', rating:4.7, reviews:52,
+  {id:'onyx-grape', category:'tobacco', brand:'ONYX Blend', name:'Виноград-мята', volumeDefault:'100г', price:780, badge:'new', rating:4.7, reviews:52, image:PHOTO.tobaccoPlant2,
     flavors:['#8AA06B','#B8703F'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:1, volumes:['50г','100г','250г'], volumeIndex:1,
     description:'Сочный виноград с прохладной мятой на выдохе. Освежающий профиль, плотный дым.'},
-  {id:'nox-mint', category:'tobacco', brand:'NOX Tobacco', name:'Ледяная мята', volumeDefault:'100г', price:890, badge:null, rating:4.5, reviews:167,
+  {id:'nox-mint', category:'tobacco', brand:'NOX Tobacco', name:'Ледяная мята', volumeDefault:'100г', price:890, badge:null, rating:4.5, reviews:167, image:PHOTO.tobaccoLeaf,
     flavors:['#8AA06B','#C9A467'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:2, volumes:['50г','100г','250г'], volumeIndex:1,
     description:'Интенсивный холод и чистый вкус мяты. Для тех, кто любит выразительные, бодрящие смеси.'},
-  {id:'onyx-coal-24', category:'coal', brand:'ONYX Coal', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'new', rating:4.9, reviews:301,
+  {id:'onyx-coal-24', category:'coal', brand:'ONYX Coal', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'new', rating:4.9, reviews:301, image:PHOTO.coal,
     flavors:[], strengths:[], strengthDefault:0, volumes:['0.5 кг','1 кг','3 кг'], volumeIndex:1,
     description:'Быстрое розжигание, долгое горение без запаха и лишнего пепла. 72 кубика на упаковку.'},
-  {id:'phunnel-m', category:'bowls', brand:'Чаши', name:'Phunnel M', volumeDefault:'', price:1290, badge:null, rating:4.8, reviews:44,
+  {id:'phunnel-m', category:'bowls', brand:'Чаши', name:'Phunnel M', volumeDefault:'', price:1290, badge:null, rating:4.8, reviews:44, image:PHOTO.bowl,
     flavors:[], strengths:[], strengthDefault:0, volumes:['M','L'], volumeIndex:0,
     description:'Керамическая чаша фаннел для плотного дыма и равномерного прогрева табака.'},
-  {id:'hookah-overdose', category:'hookahs', brand:'ГОРЧИТ Lounge', name:'Кальян Overdose 72см', volumeDefault:'', price:12900, badge:'hit', rating:4.9, reviews:76,
+  {id:'hookah-overdose', category:'hookahs', brand:'ГОРЧИТ Lounge', name:'Кальян Overdose 72см', volumeDefault:'', price:12900, badge:'hit', rating:4.9, reviews:76, image:PHOTO.hookah,
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Флагманская модель для домашних и лаунж-сессий. Тройная система очистки дыма.'},
-  {id:'acc-tongs', category:'accessories', brand:'ГОРЧИТ', name:'Щипцы для углей', volumeDefault:'', price:990, badge:null, rating:4.7, reviews:23,
+  {id:'acc-tongs', category:'accessories', brand:'ГОРЧИТ', name:'Щипцы для углей', volumeDefault:'', price:990, badge:null, rating:4.7, reviews:23, image:PHOTO.tongs,
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Нержавеющая сталь, удобный хват, подходит для любых углей.'},
+  {id:'acc-hose', category:'accessories', brand:'ГОРЧИТ', name:'Силиконовый шланг', volumeDefault:'1.5 м', price:1450, badge:'new', rating:4.6, reviews:31, image:PHOTO.hose,
+    flavors:[], strengths:[], strengthDefault:0, volumes:['1.5 м','2 м'], volumeIndex:0,
+    description:'Моющийся силиконовый шланг без запаха пластика. Съёмный мундштук, лёгкая протяжка дыма.'},
+  {id:'acc-foil', category:'accessories', brand:'ГОРЧИТ', name:'Фольга для чаши', volumeDefault:'10 м', price:290, badge:null, rating:4.5, reviews:19, image:PHOTO.foil,
+    flavors:[], strengths:[], strengthDefault:0, volumes:['10 м'], volumeIndex:0,
+    description:'Плотная пищевая фольга для розжига на чаше. Держит жар равномерно, не рвётся при проколе.'},
+  {id:'vape-mango', category:'vape', brand:'ГОРЧИТ Liquids', name:'Манго-лёд', volumeDefault:'30мл', price:590, badge:'hit', rating:4.8, reviews:142, image:PHOTO.vape1,
+    flavors:['#D9A441','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:1, volumes:['30мл','60мл'], volumeIndex:0,
+    description:'Сочный манго с прохладным холодком на выдохe. Плотный пар, насыщенный вкус в каждой затяжке.'},
+  {id:'vape-cola', category:'vape', brand:'ГОРЧИТ Liquids', name:'Кола-лайм', volumeDefault:'30мл', price:590, badge:'new', rating:4.6, reviews:64, image:PHOTO.vape2,
+    flavors:['#B8703F','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:0, volumes:['30мл','60мл'], volumeIndex:0,
+    description:'Классическая кола с лёгкой лаймовой кислинкой. Сбалансированная сладость, лёгкий бросок в горло.'},
 ];
 
 function getProduct(id){return PRODUCTS.find(p=>p.id===id);}
