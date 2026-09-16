@@ -32,14 +32,19 @@ function saveState(){
 // ephemeral per-view state
 let productSelection = null;
 let searchQuery = '';
-let lastWheelResult = null;
-let currentFilters = { brand:null, taste:null, strength:null, inStockOnly:false, minPrice:null, maxPrice:null };
+let currentFilters = { brand:[], taste:[], strength:[], inStockOnly:false, minPrice:null, maxPrice:null };
 let sortMode = 'popular';
 let catalogChip = 'all';
 let sheetOpen = null; // null | 'filter' | 'sort'
 let confirmSheet = null; // {title, text, confirmLabel, action, payload}
+let wheelResultPrize = null; // приз, показанный в bottom sheet после прокрутки
+let wheelRulesOpen = false;
 let routeLoading = false;
 let orderProcessing = false;
+let legalConfirmed = false;
+let ordersTab = 'all';
+let favoritesTab = 'all';
+function closeAllSheets(){ sheetOpen=null; confirmSheet=null; wheelResultPrize=null; wheelRulesOpen=false; render(); }
 
 /* ---------- helpers ---------- */
 function formatPrice(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽'; }
@@ -121,28 +126,11 @@ function loyaltyQrCard(){
   '</div>';
 }
 
-/* ---------- колесо фортуны ---------- */
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-function dailySpinAvailable(){ return STATE.wheelLastFreeSpinDate !== todayStr(); }
-function spinsAvailable(){ return (dailySpinAvailable()?1:0) + STATE.wheelSpinsExtra; }
-function consumeSpin(){
-  if(dailySpinAvailable()) STATE.wheelLastFreeSpinDate = todayStr();
-  else STATE.wheelSpinsExtra = Math.max(0, STATE.wheelSpinsExtra - 1);
-}
-function pickPrizeIndex(){
-  const total = WHEEL_WEIGHTS.reduce((a,b)=>a+b,0);
-  let r = Math.random()*total;
-  for(let i=0;i<WHEEL_WEIGHTS.length;i++){ if(r < WHEEL_WEIGHTS[i]) return i; r -= WHEEL_WEIGHTS[i]; }
-  return 0;
-}
-function applyWheelPrize(idx){
-  const prize = WHEEL_PRIZES[idx];
-  if(prize.type==='bonus') STATE.bonusBalance += prize.value;
-  else if(prize.type==='promo') PROMO_CODES[prize.code] = {discount:prize.discount, label:prize.title, appliesTo:'all', expiry:'7 дней'};
-  else if(prize.type==='freeDelivery') STATE.freeDeliveryCredits += 1;
-  else if(prize.type==='again') STATE.wheelSpinsExtra += 1;
-  return prize;
-}
+/* ---------- колесо фортуны ----------
+   Вероятность приза и учёт попыток теперь считает WheelService (js/services.js) —
+   он инкапсулирует то, что в проде обязано быть на бэкенде. Здесь только UI. */
+function spinsAvailable(){ return WheelService.attemptsLeft(); }
+let wheelSpinPending = false;
 function wheelSvg(rotation){
   const n = WHEEL_PRIZES.length, cx=140, cy=140, r=134, seg=360/n;
   let inner = '';
@@ -158,8 +146,24 @@ function wheelSvg(rotation){
     inner += '<text x="'+lx+'" y="'+ly+'" fill="'+textColor+'" font-size="17" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate('+rot+' '+lx+' '+ly+')" font-family="Inter, sans-serif">'+p.label+'</text>';
   });
   return '<svg id="wheelDial" width="280" height="280" viewBox="0 0 280 280" style="display:block;transform-origin:140px 140px;transform:rotate('+(rotation||0)+'deg);">'+inner+
-    '<circle cx="140" cy="140" r="128" fill="none" stroke="var(--border)" stroke-width="2"/>'+
-    '<circle cx="140" cy="140" r="20" fill="#fff" stroke="var(--primary)" stroke-width="2"/></svg>';
+    '<circle cx="140" cy="140" r="128" fill="none" stroke="#15171A" stroke-width="2.5"/></svg>';
+}
+// Центральная кнопка "GO" — фиксированная, не должна вращаться вместе с колесом,
+// поэтому рисуется отдельным слоем поверх wheelSvg, а не внутри вращающегося <svg>.
+function wheelHub(){
+  return '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 2px 8px rgba(245,43,50,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;pointer-events:none;">GO</div>';
+}
+// Маленькое статичное превью колеса для карточки-входа на экране "Бонусы" (без id/анимации).
+function wheelPreviewSvg(){
+  const n = WHEEL_PRIZES.length, cx=26, cy=26, r=24, seg=360/n;
+  let inner = '';
+  WHEEL_PRIZES.forEach(function(p,i){
+    const a0 = (i*seg - 90) * Math.PI/180, a1 = ((i+1)*seg - 90) * Math.PI/180;
+    const x0 = (cx + r*Math.cos(a0)).toFixed(1), y0 = (cy + r*Math.sin(a0)).toFixed(1);
+    const x1 = (cx + r*Math.cos(a1)).toFixed(1), y1 = (cy + r*Math.sin(a1)).toFixed(1);
+    inner += '<path d="M'+cx+','+cy+' L'+x0+','+y0+' A'+r+','+r+' 0 0,1 '+x1+','+y1+' Z" fill="'+p.color+'"/>';
+  });
+  return '<svg width="52" height="52" viewBox="0 0 52 52">'+inner+'<circle cx="26" cy="26" r="24" fill="none" stroke="#15171A" stroke-width="1.5"/><circle cx="26" cy="26" r="7" fill="var(--primary)" stroke="#fff" stroke-width="1.5"/></svg>';
 }
 
 function haptic(kind){
@@ -189,7 +193,7 @@ function parseHash(){
   return {name: parts[0] || 'home', param: parts[1]};
 }
 window.addEventListener('hashchange', function(){
-  lastWheelResult = null; sheetOpen = null; confirmSheet = null;
+  sheetOpen = null; confirmSheet = null; wheelResultPrize = null; wheelRulesOpen = false; legalConfirmed = false;
   const {name} = parseHash();
   clearTimeout(window.__loadT);
   if(name==='catalog' || name==='category'){
@@ -316,6 +320,9 @@ function render(){
     case 'wheel': html = viewWheel(); break;
     case 'referral': html = viewReferral(); break;
     case 'about': html = viewAbout(); break;
+    case 'personal-data': html = viewPersonalData(); break;
+    case 'addresses': html = viewAddresses(); break;
+    case 'support': html = viewSupport(); break;
     default: html = viewHome(); nav='home';
   }
 
@@ -337,6 +344,7 @@ function goBack(){
     product:'catalog', checkout:'cart', order:'orders', category:'catalog',
     notifications:'home', promotions:'profile', wheel:'promotions', referral:'promotions',
     about:'profile', orders:'profile', search:'catalog',
+    'personal-data':'profile', addresses:'profile', support:'profile',
   };
   navigate('#/'+(map[name]||'home'));
 }
@@ -399,9 +407,9 @@ function skeletonGrid(n){
 
 function applyFilters(list){
   let out = list.filter(function(p){
-    if(currentFilters.brand && p.brand!==currentFilters.brand) return false;
-    if(currentFilters.taste && p.taste!==currentFilters.taste) return false;
-    if(currentFilters.strength && p.strengthTag!==currentFilters.strength) return false;
+    if(currentFilters.brand.length && currentFilters.brand.indexOf(p.brand)===-1) return false;
+    if(currentFilters.taste.length && currentFilters.taste.indexOf(p.taste)===-1) return false;
+    if(currentFilters.strength.length && currentFilters.strength.indexOf(p.strengthTag)===-1) return false;
     if(currentFilters.inStockOnly && p.inStock===false) return false;
     if(currentFilters.minPrice!=null && p.price<currentFilters.minPrice) return false;
     if(currentFilters.maxPrice!=null && p.price>currentFilters.maxPrice) return false;
@@ -410,14 +418,29 @@ function applyFilters(list){
   if(sortMode==='price-asc') out = out.slice().sort(function(a,b){return a.price-b.price;});
   else if(sortMode==='price-desc') out = out.slice().sort(function(a,b){return b.price-a.price;});
   else if(sortMode==='rating') out = out.slice().sort(function(a,b){return b.rating-a.rating;});
+  else if(sortMode==='newest') out = out.filter(function(p){return p.badge==='new';});
   else out = out.slice().sort(function(a,b){return (b.rating*b.reviews)-(a.rating*a.reviews);});
   return out;
 }
 function hasActiveFilters(){
   const f = currentFilters;
-  return !!(f.brand||f.taste||f.strength||f.inStockOnly||f.minPrice!=null||f.maxPrice!=null);
+  return !!(f.brand.length||f.taste.length||f.strength.length||f.inStockOnly||f.minPrice!=null||f.maxPrice!=null);
 }
-const SORT_LABELS = {popular:'По популярности', 'price-asc':'Сначала дешёвые', 'price-desc':'Сначала дорогие', rating:'По рейтингу'};
+const SORT_LABELS = {popular:'Популярные', 'price-asc':'Сначала дешевле', 'price-desc':'Сначала дороже', rating:'По рейтингу', newest:'Новинки'};
+
+function toggleInArray(arr, val){
+  const i = arr.indexOf(val);
+  if(i>-1) arr.splice(i,1); else arr.push(val);
+}
+function checkboxRow(label, checked, action, value){
+  return '<label class="switch-row" style="cursor:pointer;padding:2px 0;" data-action="'+action+'" data-value="'+value+'">'+
+    '<span style="font-size:14px;color:var(--text);">'+label+'</span>'+
+    '<span style="width:20px;height:20px;border-radius:6px;border:1.5px solid '+(checked?'var(--primary)':'var(--border)')+';background:'+(checked?'var(--primary)':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(checked?svgIcon(ICONS.check,13):'')+'</span>'+
+  '</label>';
+}
+function chipToggle(label, checked, action, value){
+  return '<div class="chip'+(checked?' active':'')+'" data-action="'+action+'" data-value="'+value+'">'+label+'</div>';
+}
 
 function filterSheetHtml(baseList){
   const brands = [...new Set(baseList.map(function(p){return p.brand;}))];
@@ -432,7 +455,7 @@ function filterSheetHtml(baseList){
   return '<div class="sheet-overlay open" data-action="sheet-backdrop">'+
     '<div class="sheet">'+
       '<div class="sheet-handle"><span></span></div>'+
-      '<div class="sheet-head"><div class="h3">Фильтры</div><button class="icon-btn" data-action="sheet-close">'+svgIcon(ICONS.close,18)+'</button></div>'+
+      '<div class="sheet-head"><div class="h3">Фильтры</div><button class="section-link" data-action="filter-reset">Сбросить</button></div>'+
       '<div class="sheet-body">'+
         '<div class="filter-group">'+
           '<label class="flabel">Цена</label>'+
@@ -440,26 +463,22 @@ function filterSheetHtml(baseList){
           '<input class="range-slider" type="range" id="filterMinPrice" min="'+lo+'" max="'+hi+'" value="'+minV+'" aria-label="Минимальная цена">'+
           '<input class="range-slider" type="range" id="filterMaxPrice" min="'+lo+'" max="'+hi+'" value="'+maxV+'" aria-label="Максимальная цена">'+
         '</div>'+
-        '<div class="filter-group">'+
-          '<label class="flabel">Бренд</label>'+
-          '<select class="select" id="filterBrand"><option value="">Все бренды</option>'+
-            brands.map(function(b){return '<option value="'+b+'"'+(f.brand===b?' selected':'')+'>'+b+'</option>';}).join('')+
-          '</select>'+
-        '</div>'+
+        (brands.length>1 ? (
+          '<div class="filter-group">'+
+            '<label class="flabel">Бренд</label>'+
+            brands.map(function(b){return checkboxRow(b, f.brand.indexOf(b)>-1, 'toggle-filter-brand', b);}).join('')+
+          '</div>'
+        ) : '')+
         (tastes.length ? (
           '<div class="filter-group">'+
             '<label class="flabel">Вкус</label>'+
-            '<select class="select" id="filterTaste"><option value="">Все вкусы</option>'+
-              tastes.map(function(t){return '<option value="'+t+'"'+(f.taste===t?' selected':'')+'>'+t+'</option>';}).join('')+
-            '</select>'+
+            tastes.map(function(t){return checkboxRow(t, f.taste.indexOf(t)>-1, 'toggle-filter-taste', t);}).join('')+
           '</div>'
         ) : '')+
         (strengthTags.length ? (
           '<div class="filter-group">'+
             '<label class="flabel">Крепость</label>'+
-            '<select class="select" id="filterStrength"><option value="">Все крепости</option>'+
-              strengthTags.map(function(s){return '<option value="'+s+'"'+(f.strength===s?' selected':'')+'>'+s+'</option>';}).join('')+
-            '</select>'+
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+strengthTags.map(function(s){return chipToggle(s, f.strength.indexOf(s)>-1, 'toggle-filter-strength', s);}).join('')+'</div>'+
           '</div>'
         ) : '')+
         '<div class="switch-row">'+
@@ -468,8 +487,7 @@ function filterSheetHtml(baseList){
         '</div>'+
       '</div>'+
       '<div class="sheet-footer">'+
-        '<button class="btn btn-secondary" style="flex:1;" data-action="filter-reset">Сбросить</button>'+
-        '<button class="btn btn-primary" style="flex:1.6;" data-action="sheet-close">Показать '+count+' товаров</button>'+
+        '<button class="btn btn-primary btn-block" data-action="sheet-close">Показать '+count+' товаров</button>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -536,6 +554,10 @@ function viewHome(){
           '<span>'+c.name+'</span>'+
         '</button>'
       );}).join('')+
+      '<button class="category-item" data-action="goto-new-arrivals">'+
+        '<div class="category-icon">'+svgIcon(CATEGORY_ICON_PATH.new,22)+'</div>'+
+        '<span>Новинки</span>'+
+      '</button>'+
     '</div>'+
     '<div class="section">'+
       '<div class="section-head"><div class="h2">Популярные товары</div><button class="section-link" data-nav="catalog">Все →</button></div>'+
@@ -552,7 +574,7 @@ function viewHome(){
 /* ================= CATALOG (весь каталог, чипы по категориям) ================= */
 
 function viewCatalog(){
-  const base = catalogChip==='all' ? PRODUCTS : PRODUCTS.filter(function(p){return p.category===catalogChip;});
+  const base = catalogChip==='all' ? PRODUCTS : catalogChip==='new' ? PRODUCTS.filter(function(p){return p.badge==='new';}) : PRODUCTS.filter(function(p){return p.category===catalogChip;});
   const items = applyFilters(base);
   return '<div class="tg-header"><span class="title">Каталог</span><span style="width:36px"></span></div>'+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:14px 0 18px;">'+
@@ -561,6 +583,7 @@ function viewCatalog(){
     '<div class="hscroll">'+
       '<div class="chip'+(catalogChip==='all'?' active':'')+'" data-action="catalog-chip" data-cat="all">Все</div>'+
       CATEGORIES.map(function(c){return '<div class="chip'+(catalogChip===c.id?' active':'')+'" data-action="catalog-chip" data-cat="'+c.id+'">'+c.name+'</div>';}).join('')+
+      '<div class="chip'+(catalogChip==='new'?' active':'')+'" data-action="catalog-chip" data-cat="new">Новинки</div>'+
     '</div>'+
     '<div class="section" style="flex-direction:row;align-items:center;justify-content:space-between;">'+
       '<div style="font-size:13px;color:var(--text-secondary);font-weight:500;">'+items.length+' товаров</div>'+
@@ -603,8 +626,8 @@ function viewCategory(catId){
     '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,16)+
       '<span style="color:var(--text-tertiary);font-size:14px;">Поиск в категории «'+cat.name+'»</span></button></div>'+
     '<div class="hscroll">'+
-      '<div class="chip'+(!currentFilters.brand?' active':'')+'" data-action="pick-brand" data-brand="">Все</div>'+
-      brands.map(function(b){return '<div class="chip'+(currentFilters.brand===b?' active':'')+'" data-action="pick-brand" data-brand="'+b+'">'+b+'</div>';}).join('')+
+      '<div class="chip'+(!currentFilters.brand.length?' active':'')+'" data-action="pick-brand" data-brand="">Все</div>'+
+      brands.map(function(b){return '<div class="chip'+(currentFilters.brand.indexOf(b)>-1?' active':'')+'" data-action="pick-brand" data-brand="'+b+'">'+b+'</div>';}).join('')+
     '</div>'+
     '<div class="section" style="flex-direction:row;align-items:center;justify-content:space-between;">'+
       '<div style="font-size:13px;color:var(--text-secondary);font-weight:500;">'+items.length+' товаров</div>'+
@@ -661,6 +684,13 @@ function viewSearch(){
 
 /* ================= PRODUCT DETAIL ================= */
 
+function cartQtyForProduct(productId){
+  return STATE.cart.filter(function(i){return i.productId===productId;}).reduce(function(s,i){return s+i.qty;},0);
+}
+function relatedProducts(p){
+  return PRODUCTS.filter(function(x){return x.category===p.category && x.id!==p.id;}).slice(0,6);
+}
+
 function viewProduct(id){
   const p = getProduct(id);
   if(!p) return headerBack('Товар')+'<div class="content"><div class="empty-state"><div class="empty-title">Товар не найден</div></div></div>';
@@ -670,6 +700,9 @@ function viewProduct(id){
   const sel = productSelection;
   const total = p.price * sel.qty;
   const fav = isFav(p.id);
+  const oos = p.inStock===false;
+  const inCartQty = cartQtyForProduct(p.id);
+  const related = relatedProducts(p);
   return headerBack('', '<div style="display:flex;gap:4px;"><button class="icon-btn" data-action="toggle-fav" data-id="'+p.id+'" style="'+(fav?'color:var(--primary)':'')+'">'+svgIcon(fav?ICONS.heartFill:ICONS.heart,19)+'</button><button class="icon-btn" data-action="share-product">'+svgIcon(ICONS.share,18)+'</button></div>')+
   '<div class="content"><div style="display:flex;flex-direction:column;">'+
     '<div class="thumb-photo" style="height:300px;border-radius:0;flex-shrink:0;">'+productPhotoHtml(p)+'</div>'+
@@ -681,6 +714,7 @@ function viewProduct(id){
         '<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px;flex-wrap:wrap;">'+
           '<span class="price-lg">'+formatPrice(p.price)+'</span>'+
           (p.oldPrice?'<span class="price-old">'+formatPrice(p.oldPrice)+'</span><span class="badge badge-sale">-'+Math.round((1-p.price/p.oldPrice)*100)+'%</span>':'')+
+          (oos?'<span class="badge badge-oos">Нет в наличии</span>':'')+
         '</div>'+
         (isTobaccoLike(p) ? '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">18+ Продукция содержит никотин. Только для лиц старше 18 лет.</div>' : '')+
       '</div>'+
@@ -701,26 +735,43 @@ function viewProduct(id){
           '<div class="h3" style="font-size:13px;">Объём</div>'+
           '<div style="display:flex;gap:8px;">'+p.volumes.map(function(v,i){return '<div class="chip'+(i===sel.volumeIndex?' active':'')+'" data-action="pick-volume" data-i="'+i+'">'+v+'</div>';}).join('')+'</div>'+
         '</div>'+
-        '<div class="qty-stepper">'+
+        '<div class="qty-stepper" style="height:44px;">'+
           '<button data-action="qty-dec">–</button><span>'+sel.qty+'</span><button class="plus" data-action="qty-inc">+</button>'+
         '</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:16px;">'+
-        '<div class="h3" style="font-size:13px;">О товаре</div>'+
+        '<div class="h3" style="font-size:13px;">Описание</div>'+
         '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);">'+p.description+'</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--border);padding-top:16px;">'+
         '<div class="h3" style="font-size:13px;margin-bottom:8px;">Характеристики</div>'+
-        charRow('Крепость', p.strengthTag || (p.strengths[sel.strengthIndex]||'—'))+
-        charRow('Вкус', p.taste || '—')+
+        charRow('Бренд', p.brand)+
+        (p.strengthTag || p.strengths.length ? charRow('Крепость', p.strengthTag || p.strengths[sel.strengthIndex]) : '')+
+        (p.taste ? charRow('Вкус', p.taste) : '')+
         charRow('Вес', p.volumes[sel.volumeIndex] || p.volumeDefault || '—')+
-        charRow('Производитель', p.brand)+
+        charRow('Страна', p.country || '—')+
       '</div>'+
+      (related.length ? (
+        '<div style="display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--border);padding-top:16px;margin:0 -20px;">'+
+          '<div class="h3" style="font-size:13px;padding:0 20px;">Вам может понравиться</div>'+
+          '<div class="hscroll" style="padding:0 20px;">'+related.map(function(r){return productCardHtml(r);}).join('')+'</div>'+
+        '</div>'
+      ) : '')+
     '</div>'+
   '</div></div>'+
   '<div class="sticky-bar">'+
-    '<div style="display:flex;flex-direction:column;"><span style="font-size:10px;color:var(--text-tertiary);font-weight:600;">Итого</span><span class="h2" style="font-size:18px;">'+formatPrice(total)+'</span></div>'+
-    '<button class="btn btn-primary" id="addToCartBtn" style="flex:1;" data-action="add-to-cart">'+svgIcon(ICONS.cart,17)+' В корзину</button>'+
+    (oos ? (
+      '<button class="btn btn-secondary btn-block" data-action="notify-restock" data-id="'+p.id+'">'+svgIcon(ICONS.bell,16)+' Сообщить, когда появится</button>'
+    ) : inCartQty>0 ? (
+      '<div class="qty-stepper" style="height:44px;">'+
+        '<button data-action="qty-dec">–</button><span>'+sel.qty+'</span><button class="plus" data-action="qty-inc">+</button>'+
+      '</div>'+
+      '<button class="btn btn-primary" style="flex:1;" data-action="add-to-cart">'+formatPrice(total)+' · Добавить ещё</button>'+
+      '<button class="icon-btn" data-nav="cart" style="background:var(--surface-2);border-radius:var(--radius-btn);width:44px;height:44px;">'+svgIcon(ICONS.cart,18)+'</button>'
+    ) : (
+      '<div style="display:flex;flex-direction:column;"><span style="font-size:10px;color:var(--text-tertiary);font-weight:600;">Итого</span><span class="h2" style="font-size:18px;">'+formatPrice(total)+'</span></div>'+
+      '<button class="btn btn-primary" id="addToCartBtn" style="flex:1;" data-action="add-to-cart">'+svgIcon(ICONS.cart,17)+' Добавить в корзину</button>'
+    ))+
   '</div>';
 }
 function charRow(label, val){
@@ -825,10 +876,13 @@ function viewCheckout(){
       '<div class="summary-row"><span>Доставка</span><span class="val">'+(cartDeliveryFee()===0?'бесплатно':formatPrice(cartDeliveryFee()))+'</span></div>'+
       '<div class="summary-row"><span>Кешбэк за заказ · '+currentTier().name+' '+Math.round(currentTier().cashback*100)+'%</span><span class="val" style="color:var(--primary);">+'+Math.round(checkoutTotal()*currentTier().cashback)+'</span></div>'+
     '</div>'+
+    '<label class="switch-row" style="cursor:pointer;align-items:flex-start;padding-bottom:16px;" data-action="toggle-legal">'+
+      '<span style="font-size:12px;color:var(--text-secondary);line-height:1.5;padding-right:12px;">Я подтверждаю правильность данных заказа и согласен с условиями покупки.</span>'+
+      '<span style="width:20px;height:20px;border-radius:6px;border:1.5px solid '+(legalConfirmed?'var(--primary)':'var(--border)')+';background:'+(legalConfirmed?'var(--primary)':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(legalConfirmed?svgIcon(ICONS.check,13):'')+'</span>'+
+    '</label>'+
   '</div></div>'+
   '<div class="sticky-bar" style="flex-direction:column;align-items:stretch;gap:12px;">'+
-    '<div style="display:flex;align-items:baseline;justify-content:space-between;"><span style="font-size:13px;color:var(--text-secondary);font-weight:600;">Итого к оплате</span><span class="h2">'+formatPrice(checkoutTotal())+'</span></div>'+
-    '<button class="btn btn-primary btn-block" id="payBtn" data-action="place-order"'+(orderProcessing?' disabled':'')+'>'+(orderProcessing?'Обработка...':'Оплатить заказ')+'</button>'+
+    '<button class="btn btn-primary btn-block" id="payBtn" data-action="place-order"'+(orderProcessing?' disabled':'')+'>'+(orderProcessing?'Обработка...':'Оплатить · '+formatPrice(checkoutTotal()))+'</button>'+
   '</div>';
 }
 
@@ -839,15 +893,15 @@ function viewOrderSuccess(orderId){
   return '<div class="content" style="display:flex;">'+
     '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:32px;text-align:center;">'+
       '<div style="width:88px;height:88px;border-radius:50%;background:var(--success-tint);display:flex;align-items:center;justify-content:center;color:var(--success);">'+svgIcon(ICONS.check,40,'')+'</div>'+
-      '<div style="display:flex;flex-direction:column;gap:8px;"><div class="h1">Заказ оформлен!</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;max-width:260px;">Спасибо за заказ. Мы уже готовим его к отправке.</div></div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px;"><div class="h1">Заказ оформлен</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;max-width:260px;">Спасибо! Мы получили ваш заказ.</div></div>'+
       '<div style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:10px;">'+
-        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Номер заказа</span><span style="color:var(--text);font-weight:700;">№ '+(order?order.id:orderId)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Номер заказа</span><span style="color:var(--text);font-weight:700;">Заказ №'+(order?order.id:orderId)+'</span></div>'+
         '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Ожидаемая доставка</span><span style="color:var(--text);font-weight:700;">'+(order?order.eta:'сегодня, 18:00–20:00')+'</span></div>'+
         '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Начислено бонусов</span><span style="color:var(--primary);font-weight:700;">+'+(order?order.cashback:0)+'</span></div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:6px;">'+
-        '<button class="btn btn-primary btn-block" data-nav="orders">Перейти к заказам</button>'+
-        '<button class="btn btn-secondary btn-block" data-nav="catalog">Вернуться в каталог</button>'+
+        '<button class="btn btn-primary btn-block" data-nav="order/'+orderId+'">Посмотреть заказ</button>'+
+        '<button class="btn btn-secondary btn-block" data-nav="catalog">Продолжить покупки</button>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -860,8 +914,8 @@ function viewProfile(){
   return '<div class="tg-header"><span class="title">Профиль</span><button class="icon-btn" data-nav="about">'+svgIcon(ICONS.settings,19)+'</button></div>'+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:20px;padding:18px 0 18px;">'+
     '<div style="display:flex;align-items:center;gap:14px;padding:0 20px;">'+
-      '<div class="avatar">Р</div>'+
-      '<div style="display:flex;flex-direction:column;gap:3px;"><div style="font-size:16px;font-weight:700;color:var(--text);">Ринат М.</div><div style="font-size:12px;color:var(--text-tertiary);">+7 999 123-45-67</div></div>'+
+      '<div class="avatar">'+PROFILE_USER.name.charAt(0)+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:3px;"><div style="font-size:16px;font-weight:700;color:var(--text);">'+PROFILE_USER.name+'</div><div style="font-size:12px;color:var(--text-tertiary);">'+PROFILE_USER.phone+'</div></div>'+
     '</div>'+
     '<div class="loyalty-card">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="eyebrow" style="color:rgba(255,255,255,0.7);">Уровень '+tier.name+'</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">кэшбэк '+Math.round(tier.cashback*100)+'%</div></div>'+
@@ -873,23 +927,81 @@ function viewProfile(){
       '</details>'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;">'+
-      profileRow('user','Личные данные')+
-      profileRow('mapPin','Адреса доставки')+
-      profileRow('bell','Уведомления','notifications')+
-      profileRow('gift','Бонусы и промокоды','promotions')+
+      profileRow('box','Мои заказы','orders')+
       profileRow('heart','Избранное','favorites')+
-      profileRow('box','История заказов','orders')+
-      profileRow('support','Поддержка')+
-      profileRow('info','О приложении','about')+
+      profileRow('mapPin','Адреса','addresses')+
+      profileRow('user','Личные данные','personal-data')+
+      profileRow('gift','Бонусы','promotions')+
+      profileRow('bell','Уведомления','notifications')+
+      profileRow('support','Поддержка','support')+
+      profileRow('info','О магазине','about')+
     '</div>'+
   '</div></div>'+
   bottomNav('profile');
 }
-function profileRow(iconName, label, route){
-  return '<button class="list-row"'+(route?' data-nav="'+route+'"':'')+'>'+
+function profileRow(iconName, label, route, action){
+  return '<button class="list-row"'+(route?' data-nav="'+route+'"':'')+(action?' data-action="'+action+'"':'')+'>'+
     '<div class="row-icon">'+svgIcon(ICONS[iconName],17)+'</div>'+
     '<span style="flex:1;font-size:14px;font-weight:500;">'+label+'</span>'+svgIcon(ICONS.chevronRight,15,'chev')+
   '</button>';
+}
+
+function viewPersonalData(){
+  const u = PROFILE_USER;
+  return headerBack('Личные данные')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:16px;padding:18px 20px;">'+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Имя</label>'+
+      '<input id="pdName" class="input" value="'+u.name.replace(/"/g,'&quot;')+'">'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Телефон</label>'+
+      '<input id="pdPhone" class="input" value="'+u.phone.replace(/"/g,'&quot;')+'" inputmode="tel">'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Email</label>'+
+      '<input id="pdEmail" class="input" value="'+u.email.replace(/"/g,'&quot;')+'" placeholder="you@example.com" inputmode="email">'+
+    '</div>'+
+    '<button class="btn btn-primary btn-block" style="margin-top:8px;" data-action="save-personal-data">Сохранить</button>'+
+  '</div></div>';
+}
+
+function viewAddresses(){
+  if(ADDRESSES.length===0){
+    return headerBack('Адреса')+
+    '<div class="content" style="display:flex;"><div class="empty-state">'+
+      '<div class="empty-icon">'+svgIcon(ICONS.mapPin,28,'')+'</div>'+
+      '<div class="empty-title">Адресов пока нет</div>'+
+      '<div class="empty-text">Добавьте адрес, чтобы оформлять заказы быстрее</div>'+
+      '<button class="btn btn-primary" data-action="add-address" style="margin-top:6px;">Добавить адрес</button>'+
+    '</div></div>';
+  }
+  return headerBack('Адреса')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:12px;padding:16px 20px;">'+
+    ADDRESSES.map(function(a){return (
+      '<div style="display:flex;gap:12px;border:1px solid var(--border);border-radius:var(--radius-card);padding:14px;">'+
+        svgIcon(ICONS.mapPin,18,'')+
+        '<div style="flex:1;display:flex;flex-direction:column;gap:2px;">'+
+          '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:700;color:var(--text);">'+a.label+'</span>'+(a.isDefault?'<span class="badge badge-new">По умолчанию</span>':'')+'</div>'+
+          '<span style="font-size:13px;color:var(--text);">'+a.address+'</span>'+
+          (a.comment?'<span style="font-size:11px;color:var(--text-tertiary);">'+a.comment+'</span>':'')+
+        '</div>'+
+        '<button class="icon-btn" data-action="delete-address" data-id="'+a.id+'" style="color:var(--text-tertiary);align-self:flex-start;">'+svgIcon(ICONS.close,16)+'</button>'+
+      '</div>'
+    );}).join('')+
+    '<button class="btn btn-secondary btn-block" data-action="add-address">Добавить адрес</button>'+
+  '</div></div>';
+}
+
+function viewSupport(){
+  return headerBack('Поддержка')+
+  '<div class="content"><div style="display:flex;flex-direction:column;">'+
+    profileRow('support','Написать в поддержку','','contact-support')+
+    profileRow('info','Частые вопросы','','faq')+
+    profileRow('truck','Доставка','','faq')+
+    profileRow('card','Оплата','','faq')+
+    profileRow('box','Возврат','','faq')+
+  '</div></div>';
 }
 
 function viewAbout(){
@@ -925,10 +1037,19 @@ function viewOrders(){
       '<button class="btn btn-primary" data-nav="catalog" style="margin-top:6px;">Начать покупки</button>'+
     '</div></div>';
   }
+  const tabs = [['all','Все'],['processing','В обработке'],['delivering','Доставляются'],['completed','Завершены']];
+  function inTab(o){
+    if(ordersTab==='all') return true;
+    if(ordersTab==='delivering') return o.status==='transit';
+    if(ordersTab==='completed') return o.status==='delivered';
+    if(ordersTab==='processing') return o.status!=='transit' && o.status!=='delivered' && o.status!=='cancelled';
+    return true;
+  }
+  const filtered = ORDERS.filter(inTab);
   return headerBack('Мои заказы')+
-  '<div class="tabs"><button class="tab active">Все</button><button class="tab">В обработке</button><button class="tab">Доставлены</button></div>'+
-  '<div class="content"><div style="display:flex;flex-direction:column;padding:8px 0;">'+
-    ORDERS.map(function(o){return (
+  '<div class="tabs">'+tabs.map(function(t){return '<button class="tab'+(ordersTab===t[0]?' active':'')+'" data-action="pick-orders-tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</div>'+
+  '<div class="content">'+(STATE.simulateOffline ? offlineBanner() : '<div style="display:flex;flex-direction:column;padding:8px 0;">'+
+    (filtered.length ? filtered.map(function(o){return (
       '<button class="list-row" style="align-items:flex-start;" data-nav="order/'+o.id+'">'+
         '<div style="flex:1;display:flex;flex-direction:column;gap:2px;">'+
           '<span style="font-size:13px;color:var(--text);font-weight:700;">Заказ № '+o.id+'</span>'+
@@ -939,8 +1060,9 @@ function viewOrders(){
           '<span class="price" style="font-size:15px;">'+formatPrice(o.total)+'</span>'+
         '</div>'+
       '</button>'
-    );}).join('')+
-  '</div></div>';
+    );}).join('') : '<div style="padding:32px 20px;text-align:center;font-size:13px;color:var(--text-tertiary);">В этой вкладке пока нет заказов</div>')+
+  '</div>')+
+  '</div>';
 }
 
 function viewOrderDetail(id){
@@ -984,17 +1106,20 @@ function viewOrderDetail(id){
 
 function viewPromotions(){
   const tier = currentTier();
+  const prog = tierProgress();
   const wonPromoCodes = Object.keys(PROMO_CODES).filter(function(c){return c!=='SMOKE20';});
   return headerBack('Акции и бонусы')+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:22px;padding:18px 20px;">'+
     '<div class="loyalty-card" style="margin:0;">'+
       '<div class="eyebrow" style="color:rgba(255,255,255,0.7);">Ваш баланс</div>'+
       '<div class="h1" style="color:#fff;">'+STATE.bonusBalance+' бонусов</div>'+
+      (prog.nextName ? '<div style="display:flex;flex-direction:column;gap:6px;"><div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.15);overflow:hidden;"><div style="width:'+prog.pct+'%;height:100%;background:var(--primary);"></div></div><div style="font-size:11px;color:rgba(255,255,255,0.7);">До уровня '+prog.nextName+' — '+formatPrice(prog.remaining)+'</div></div>' : '')+
       '<div class="loyalty-tiers">'+TIERS.map(function(t){return '<div class="loyalty-tier'+(t.name===tier.name?' active':'')+'">'+t.name+'<br>'+Math.round(t.cashback*100)+'%</div>';}).join('')+'</div>'+
     '</div>'+
-    '<button class="list-row" data-nav="wheel" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:14px;">'+svgIcon(ICONS.wheel,20,'')+
-      '<div style="flex:1;display:flex;flex-direction:column;"><span style="font-size:13px;color:var(--text);font-weight:600;">Колесо фортуны</span><span style="font-size:11px;color:var(--text-tertiary);">Доступно попыток: '+spinsAvailable()+'</span></div>'+
-      svgIcon(ICONS.chevronRight,14,'chev')+
+    '<button class="list-row" data-nav="wheel" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;gap:16px;">'+
+      '<div style="flex-shrink:0;">'+wheelPreviewSvg()+'</div>'+
+      '<div style="flex:1;display:flex;flex-direction:column;"><span style="font-size:14px;color:var(--text);font-weight:700;">Колесо фортуны</span><span style="font-size:12px;color:var(--text-tertiary);">Испытайте удачу и получите бонус · '+spinsAvailable()+' попытки</span></div>'+
+      svgIcon(ICONS.chevronRight,16,'chev')+
     '</button>'+
     '<button class="list-row" data-nav="referral" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:14px;">'+svgIcon(ICONS.users,20,'')+
       '<div style="flex:1;display:flex;flex-direction:column;"><span style="font-size:13px;color:var(--text);font-weight:600;">Пригласить друзей</span><span style="font-size:11px;color:var(--text-tertiary);">+'+REFERRAL_REWARD+' бонусов за каждого</span></div>'+
@@ -1042,50 +1167,113 @@ function viewNotifications(){
 /* ================= FAVORITES ================= */
 
 function viewFavorites(){
-  const items = PRODUCTS.filter(function(p){return isFav(p.id);});
-  if(items.length===0){
+  const allFav = PRODUCTS.filter(function(p){return isFav(p.id);});
+  if(allFav.length===0){
+    favoritesTab = 'all';
     return '<div class="tg-header"><span class="title">Избранное</span><span style="width:36px"></span></div>'+
     '<div class="content" style="display:flex;"><div class="empty-state">'+
       '<div class="empty-icon">'+svgIcon(ICONS.heart,28,'')+'</div>'+
-      '<div class="empty-title">Здесь пока ничего нет</div>'+
-      '<div class="empty-text">Добавляйте товары в избранное, чтобы не потерять их.</div>'+
+      '<div class="empty-title">Здесь пока пусто</div>'+
+      '<div class="empty-text">Добавляйте товары в избранное, чтобы быстро находить их позже.</div>'+
       '<button class="btn btn-primary" data-nav="catalog" style="margin-top:6px;">Перейти в каталог</button>'+
     '</div></div>'+
     bottomNav('favorites');
   }
-  return '<div class="tg-header"><span class="title">Избранное · '+items.length+'</span><span style="width:36px"></span></div>'+
-  '<div class="tabs"><button class="tab active">Товары</button><button class="tab">Бренды</button></div>'+
-  '<div class="content"><div class="grid-2" style="padding-top:16px;padding-bottom:16px;">'+items.map(function(p){return productCardHtml(p,true);}).join('')+'</div></div>'+
+  const favCats = [...new Set(allFav.map(function(p){return p.category;}))];
+  const items = favoritesTab==='all' ? allFav : allFav.filter(function(p){return p.category===favoritesTab;});
+  return '<div class="tg-header"><span class="title">Избранное · '+allFav.length+'</span><span style="width:36px"></span></div>'+
+  (favCats.length>1 ? '<div class="tabs">'+
+    '<button class="tab'+(favoritesTab==='all'?' active':'')+'" data-action="pick-favorites-tab" data-tab="all">Все</button>'+
+    favCats.map(function(c){const cat=getCategory(c); return '<button class="tab'+(favoritesTab===c?' active':'')+'" data-action="pick-favorites-tab" data-tab="'+c+'">'+(cat?cat.name:c)+'</button>';}).join('')+
+  '</div>' : '')+
+  '<div class="content">'+(STATE.simulateOffline ? offlineBanner() : '<div class="grid-2" style="padding-top:16px;padding-bottom:16px;">'+items.map(function(p){return productCardHtml(p,true);}).join('')+'</div>')+'</div>'+
   bottomNav('favorites');
 }
 
 /* ================= WHEEL OF FORTUNE ================= */
 
-function resultBanner(p){
-  return '<div style="width:100%;background:var(--surface);border:1px solid var(--primary);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">'+
-    '<div class="eyebrow" style="color:var(--primary);">Ваш приз</div>'+
-    '<div class="h2">'+p.title+'</div>'+
-    (p.type==='promo' ? '<div style="font-size:12px;color:var(--text-secondary);">Промокод <b style="color:var(--primary);">'+p.code+'</b> активен 7 дней — примените его в корзине</div>' : '')+
-    (p.type==='freeDelivery' ? '<div style="font-size:12px;color:var(--text-secondary);">Бесплатная доставка спишется автоматически на следующем заказе</div>' : '')+
-    (p.type==='again' ? '<div style="font-size:12px;color:var(--text-secondary);">Можно крутить ещё раз прямо сейчас</div>' : '')+
+function promoCodeRow(code){
+  return '<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px dashed var(--primary);border-radius:var(--radius-card);padding:12px 16px;">'+
+    '<span style="font-size:16px;font-weight:800;letter-spacing:1px;color:var(--text);flex:1;text-align:left;">'+code+'</span>'+
+    '<button class="icon-btn" data-action="copy-wheel-promo" data-code="'+code+'">'+svgIcon(ICONS.copy,16)+'</button>'+
+  '</div>';
+}
+function wheelResultSheetHtml(){
+  if(!wheelResultPrize) return '';
+  const p = wheelResultPrize;
+  const isAgain = p.type==='again';
+  const isAuto = p.type==='bonus' || p.type==='freeDelivery';
+  return '<div class="sheet-overlay open" data-action="sheet-backdrop">'+
+    '<div class="sheet" style="max-height:none;">'+
+      '<div class="sheet-handle"><span></span></div>'+
+      '<div style="padding:8px 24px 4px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;">'+
+        (isAgain ? (
+          '<div class="h2">Попробуйте ещё раз</div>'+
+          '<div style="font-size:13px;color:var(--text-secondary);">В этот раз без бонуса. Дополнительная попытка уже начислена.</div>'
+        ) : (
+          '<div class="eyebrow" style="color:var(--primary);">Поздравляем!</div>'+
+          '<div style="font-size:28px;line-height:1.2;font-weight:800;color:var(--primary);">'+p.title+'</div>'+
+          (p.type==='promo' ? promoCodeRow(p.code) : '')+
+          (p.type==='freeDelivery' ? '<div style="font-size:13px;color:var(--text-secondary);">Спишется автоматически на следующем заказе</div>' : '')+
+          (p.type==='bonus' ? '<div style="font-size:13px;color:var(--text-secondary);">Уже зачислено на ваш баланс</div>' : '')
+        ))+
+      '</div>'+
+      '<div class="sheet-footer" style="flex-direction:column;">'+
+        (isAgain ? '<button class="btn btn-primary btn-block" data-action="sheet-close">Крутить ещё раз</button>'
+        : isAuto ? '<button class="btn btn-primary btn-block" data-nav="catalog">Перейти в каталог</button>'
+        : '<button class="btn btn-primary btn-block" data-nav="cart">Использовать бонус</button>'+
+          '<button class="btn btn-secondary btn-block" style="margin-top:8px;" data-action="sheet-close">Продолжить покупки</button>')+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+function wheelRulesSheetHtml(){
+  if(!wheelRulesOpen) return '';
+  const rules = [
+    'Одна бесплатная попытка в день.',
+    'Приз определяется системой.',
+    'Полученный бонус можно использовать согласно условиям акции.',
+    'Некоторые призы имеют срок действия.',
+    'Условия конкретной акции отображаются перед использованием.',
+  ];
+  return '<div class="sheet-overlay open" data-action="sheet-backdrop">'+
+    '<div class="sheet">'+
+      '<div class="sheet-handle"><span></span></div>'+
+      '<div class="sheet-head"><div class="h3">Как работает колесо</div><button class="icon-btn" data-action="sheet-close">'+svgIcon(ICONS.close,18)+'</button></div>'+
+      '<div class="sheet-body">'+
+        '<ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--text-secondary);line-height:1.5;">'+
+          rules.map(function(r){return '<li>'+r+'</li>';}).join('')+
+        '</ol>'+
+      '</div>'+
+      '<div class="sheet-footer"><button class="btn btn-primary btn-block" data-action="sheet-close">Понятно</button></div>'+
+    '</div>'+
   '</div>';
 }
 
 function viewWheel(){
   const spins = spinsAvailable();
-  return headerBack('Колесо фортуны')+
-  '<div class="content"><div style="display:flex;flex-direction:column;align-items:center;gap:22px;padding:26px 20px 30px;">'+
-    '<div style="position:relative;">'+
-      '<div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid var(--text);z-index:2;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25));"></div>'+
-      wheelSvg(0)+
-    '</div>'+
+  const attemptsText = spins>1 ? 'Осталось '+spins+' попытки' : spins===1 ? 'Осталась 1 попытка' : WheelService.nextFreeSpinLabel();
+  return headerBack('Колесо фортуны', '<button class="icon-btn" data-action="open-wheel-rules">'+svgIcon(ICONS.info,19)+'</button>')+
+  '<div class="content"><div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px 20px 30px;">'+
     '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'+
-      '<div class="h2">Доступно попыток: '+spins+'</div>'+
-      '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;">1 бесплатная попытка в день · +1 попытка за каждую покупку</div>'+
+      '<div class="eyebrow">БОНУСНАЯ ИГРА</div>'+
+      '<div class="h1">Крутите колесо</div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);text-align:center;max-width:280px;">Получите персональный бонус для следующей покупки.</div>'+
     '</div>'+
-    '<button id="spinBtn" class="btn btn-primary btn-block" data-action="spin-wheel"'+(spins<=0?' disabled':'')+'>'+(spins>0?'Крутить колесо':'Приходите завтра')+'</button>'+
-    (lastWheelResult ? resultBanner(lastWheelResult) : '')+
-  '</div></div>';
+    '<div style="position:relative;">'+
+      '<div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #15171A;z-index:2;"></div>'+
+      wheelSvg(0)+
+      wheelHub()+
+    '</div>'+
+    '<button id="spinBtn" class="btn btn-primary btn-block" style="max-width:360px;" data-action="spin-wheel"'+(spins<=0?' disabled':'')+'>'+(spins>0?'Крутить колесо':'Попыток больше нет')+'</button>'+
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
+      '<div class="eyebrow">Попытки</div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);text-align:center;">'+attemptsText+'</div>'+
+    '</div>'+
+    '<button class="section-link" data-action="open-wheel-rules">Как это работает</button>'+
+  '</div></div>'+
+  wheelRulesSheetHtml()+
+  wheelResultSheetHtml();
 }
 
 /* ================= REFERRAL ================= */
@@ -1139,14 +1327,13 @@ function onGlobalClick(e){
   const hit = e.target.closest('[data-action],[data-nav],[data-back]');
   if(!hit) return;
 
-  // Клик по фону шторки (не по её содержимому) закрывает её — проверяем, что цель клика
-  // это сам оверлей, а не всплытие из вложенной кнопки без своего data-action.
-  if(hit.classList.contains('sheet-overlay') && e.target===hit){
-    const bgAction = hit.getAttribute('data-action');
-    if(bgAction==='sheet-backdrop'){ sheetOpen = null; render(); return; }
-    if(bgAction==='confirm-cancel'){ confirmSheet = null; render(); return; }
+  // Клик по фону шторки (не по её содержимому) закрывает любую открытую шторку —
+  // проверяем, что цель клика это сам оверлей, а не всплытие из вложенной кнопки
+  // без своего data-action.
+  if(hit.classList.contains('sheet-overlay')){
+    if(e.target===hit) closeAllSheets();
+    return; // клик внутри шторки, но не на интерактивном элементе — тоже ничего не делаем
   }
-  if(hit.classList.contains('sheet-overlay')) return; // клик внутри шторки, но не на интерактивном элементе
   if(hit.hasAttribute('data-back')){ haptic(); goBack(); return; }
   if(hit.hasAttribute('data-nav')){ haptic(); navigate('#/'+hit.getAttribute('data-nav')); return; }
 
@@ -1200,6 +1387,39 @@ function onGlobalClick(e){
       toast('Ссылка на товар скопирована'); haptic();
       break;
     }
+    case 'notify-restock': {
+      toast('Сообщим, когда товар появится в наличии'); haptic('success');
+      break;
+    }
+
+    case 'save-personal-data': {
+      const nameEl = document.getElementById('pdName'), phoneEl = document.getElementById('pdPhone'), emailEl = document.getElementById('pdEmail');
+      if(nameEl) PROFILE_USER.name = nameEl.value.trim() || PROFILE_USER.name;
+      if(phoneEl) PROFILE_USER.phone = phoneEl.value.trim() || PROFILE_USER.phone;
+      if(emailEl) PROFILE_USER.email = emailEl.value.trim();
+      toast('Данные сохранены'); haptic('success');
+      goBack();
+      break;
+    }
+    case 'add-address': {
+      ADDRESSES.push({id:'a'+Date.now(), label:'Новый адрес', address:'Укажите адрес', comment:'', isDefault:false});
+      toast('Адрес добавлен'); haptic('success'); render();
+      break;
+    }
+    case 'delete-address': {
+      openConfirm('Удалить адрес?', 'Это действие нельзя отменить.', 'Удалить', 'delete-address', actEl.getAttribute('data-id'));
+      break;
+    }
+    case 'contact-support': {
+      toast('Функция появится совсем скоро'); haptic();
+      break;
+    }
+    case 'faq': {
+      toast('Раздел в разработке'); haptic();
+      break;
+    }
+    case 'pick-orders-tab': { ordersTab = actEl.getAttribute('data-tab'); render(); break; }
+    case 'pick-favorites-tab': { favoritesTab = actEl.getAttribute('data-tab'); render(); break; }
 
     case 'cart-inc': { const it = STATE.cart.find(i=>i.key===actEl.getAttribute('data-key')); if(it) it.qty++; saveState(); render(); break; }
     case 'cart-dec': { const it = STATE.cart.find(i=>i.key===actEl.getAttribute('data-key')); if(it){ it.qty--; if(it.qty<=0) STATE.cart = STATE.cart.filter(x=>x!==it); } saveState(); render(); break; }
@@ -1218,6 +1438,7 @@ function onGlobalClick(e){
       if(c){
         if(c.action==='cart-remove'){ STATE.cart = STATE.cart.filter(i=>i.key!==c.payload); saveState(); haptic(); toast('Товар удалён'); }
         else if(c.action==='clear-cart'){ STATE.cart = []; saveState(); haptic(); toast('Корзина очищена'); }
+        else if(c.action==='delete-address'){ const idx = ADDRESSES.findIndex(a=>a.id===c.payload); if(idx>-1) ADDRESSES.splice(idx,1); haptic(); toast('Адрес удалён'); }
       }
       confirmSheet = null; render();
       break;
@@ -1248,17 +1469,22 @@ function onGlobalClick(e){
     }
 
     case 'toggle-use-bonuses': { STATE.useBonuses = !STATE.useBonuses; render(); break; }
+    case 'toggle-legal': { legalConfirmed = !legalConfirmed; render(); break; }
     case 'toggle-instock': { currentFilters.inStockOnly = !currentFilters.inStockOnly; render(); break; }
     case 'toggle-offline': { STATE.simulateOffline = !STATE.simulateOffline; render(); break; }
     case 'retry-online': { STATE.simulateOffline = false; toast('Соединение восстановлено'); render(); break; }
 
-    case 'catalog-chip': { catalogChip = actEl.getAttribute('data-cat'); currentFilters = {brand:null,taste:null,strength:null,inStockOnly:currentFilters.inStockOnly,minPrice:null,maxPrice:null}; haptic(); render(); break; }
-    case 'pick-brand': { currentFilters.brand = actEl.getAttribute('data-brand') || null; haptic(); render(); break; }
+    case 'catalog-chip': { catalogChip = actEl.getAttribute('data-cat'); currentFilters = {brand:[],taste:[],strength:[],inStockOnly:currentFilters.inStockOnly,minPrice:null,maxPrice:null}; haptic(); render(); break; }
+    case 'goto-new-arrivals': { catalogChip = 'new'; haptic(); navigate('#/catalog'); break; }
+    case 'pick-brand': { const b = actEl.getAttribute('data-brand'); currentFilters.brand = b ? [b] : []; haptic(); render(); break; }
+    case 'toggle-filter-brand': { toggleInArray(currentFilters.brand, actEl.getAttribute('data-value')); render(); break; }
+    case 'toggle-filter-taste': { toggleInArray(currentFilters.taste, actEl.getAttribute('data-value')); render(); break; }
+    case 'toggle-filter-strength': { toggleInArray(currentFilters.strength, actEl.getAttribute('data-value')); render(); break; }
     case 'open-filter': { sheetOpen = 'filter'; render(); break; }
     case 'open-sort': { sheetOpen = 'sort'; render(); break; }
-    case 'sheet-close': { sheetOpen = null; render(); break; }
+    case 'sheet-close': { sheetOpen = null; wheelRulesOpen = false; wheelResultPrize = null; render(); break; }
     case 'pick-sort': { sortMode = actEl.getAttribute('data-mode'); sheetOpen = null; haptic(); render(); break; }
-    case 'filter-reset': { currentFilters = {brand:null,taste:null,strength:null,inStockOnly:false,minPrice:null,maxPrice:null}; haptic(); render(); break; }
+    case 'filter-reset': { currentFilters = {brand:[],taste:[],strength:[],inStockOnly:false,minPrice:null,maxPrice:null}; haptic(); render(); break; }
 
     case 'clear-search': { searchQuery=''; render(); const el=document.getElementById('searchInput'); if(el) el.focus(); break; }
     case 'set-search': { searchQuery = actEl.getAttribute('data-q'); render(); break; }
@@ -1266,6 +1492,7 @@ function onGlobalClick(e){
     case 'place-order': {
       if(orderProcessing) return;
       if(STATE.cart.length===0){ toast('Корзина пуста', 'err'); return; }
+      if(!legalConfirmed){ haptic('error'); toast('Подтвердите согласие с условиями покупки', 'err'); return; }
       orderProcessing = true; render();
       setTimeout(function(){
         const paidTotal = checkoutTotal();
@@ -1298,27 +1525,44 @@ function onGlobalClick(e){
     }
 
     case 'spin-wheel': {
+      if(wheelSpinPending) return; // двойной тап во время анимации не создаёт второй запрос
       if(spinsAvailable()<=0){ toast('Нет доступных попыток', 'err'); return; }
       const wheelEl = document.getElementById('wheelDial');
       const btnEl = document.getElementById('spinBtn');
-      if(!wheelEl || wheelEl.dataset.spinning) return;
-      wheelEl.dataset.spinning = '1';
+      if(!wheelEl) return;
+      wheelSpinPending = true;
       if(btnEl) btnEl.setAttribute('disabled','disabled');
-      const idx = pickPrizeIndex();
-      const seg = 360/WHEEL_PRIZES.length;
-      const target = 360*6 - (idx*seg + seg/2);
-      wheelEl.style.transition = 'transform 4s cubic-bezier(0.12,0.67,0.1,1)';
-      wheelEl.style.transform = 'rotate('+target+'deg)';
+      trackEvent('wheel_spin_started');
       haptic();
-      setTimeout(function(){
-        const prize = applyWheelPrize(idx);
-        consumeSpin();
-        saveState();
-        lastWheelResult = prize;
-        haptic('success');
-        toast('Выигрыш: '+prize.title);
-        render();
-      }, 4150);
+      WheelService.spin().then(function(result){
+        const seg = 360/WHEEL_PRIZES.length;
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const turns = reducedMotion ? 1 : 6;
+        const duration = reducedMotion ? 400 : 4000;
+        const target = 360*turns - (result.prizeIndex*seg + seg/2);
+        wheelEl.style.transition = 'transform '+duration+'ms cubic-bezier(0.12,0.75,0.15,1)';
+        wheelEl.style.transform = 'rotate('+target+'deg)';
+        setTimeout(function(){
+          wheelSpinPending = false;
+          haptic('success');
+          trackEvent('wheel_spin_completed', {prize:result.prize.type});
+          wheelResultPrize = result.prize;
+          render();
+        }, duration+150);
+      }).catch(function(){
+        wheelSpinPending = false;
+        if(btnEl) btnEl.removeAttribute('disabled');
+        trackEvent('wheel_spin_error');
+        toast('Не удалось запустить колесо', 'err');
+      });
+      break;
+    }
+    case 'open-wheel-rules': { wheelRulesOpen = true; trackEvent('wheel_rules_opened'); render(); break; }
+    case 'copy-wheel-promo': {
+      const code = actEl.getAttribute('data-code');
+      if(navigator.clipboard) navigator.clipboard.writeText(code).catch(()=>{});
+      trackEvent('wheel_prize_applied', {code:code});
+      toast('Промокод скопирован'); haptic('success');
       break;
     }
 
@@ -1367,7 +1611,5 @@ function onGlobalChange(e){
     currentFilters.maxPrice = +document.getElementById('filterMaxPrice').value;
     if(currentFilters.minPrice>currentFilters.maxPrice){ const t=currentFilters.minPrice; currentFilters.minPrice=currentFilters.maxPrice; currentFilters.maxPrice=t; }
     render();
-  } else if(e.target.id==='filterBrand'){ currentFilters.brand = e.target.value || null; render(); }
-  else if(e.target.id==='filterTaste'){ currentFilters.taste = e.target.value || null; render(); }
-  else if(e.target.id==='filterStrength'){ currentFilters.strength = e.target.value || null; render(); }
+  }
 }

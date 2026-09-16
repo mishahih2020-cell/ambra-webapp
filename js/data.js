@@ -36,13 +36,13 @@ const ICONS = {
   share: '<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 8h.01"/>'
 };
-function icon(name, size){size=size||20;return '<svg class="icon" width="'+size+'" height="'+size+'" viewBox="0 0 24 24">'+ICONS[name]+'</svg>';}
-
 const CATEGORIES = [
-  {id:'tobacco', name:'Табак', count:7, from:680},
+  {id:'tobacco', name:'Табак', count:7, from:780},
   {id:'hookahs', name:'Кальяны', count:2, from:9990},
-  {id:'accessories', name:'Аксессуары', count:5, from:290},
+  {id:'bowls', name:'Чаши', count:2, from:990},
   {id:'coal', name:'Уголь', count:2, from:450},
+  {id:'accessories', name:'Аксессуары', count:4, from:290},
+  {id:'drinks', name:'Напитки', count:2, from:120},
   {id:'vape', name:'Жидкости', count:2, from:590},
 ];
 const CATEGORY_ICON_PATH = {
@@ -51,7 +51,9 @@ const CATEGORY_ICON_PATH = {
   coal:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
   bowls:'<path d="M7 3h10l-1 15a4 4 0 01-8 0L7 3z"/><path d="M7 9h10"/>',
   accessories:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/>',
-  vape:'<rect x="10" y="2" width="4" height="7" rx="1.5"/><path d="M8 9h8l1 4-1 9H9L8 13z"/><path d="M10 13h4"/>'
+  drinks:'<path d="M8 3h8l-1 4H9L8 3z"/><path d="M9 7l1 13h4l1-13"/><path d="M10 12h4"/>',
+  vape:'<rect x="10" y="2" width="4" height="7" rx="1.5"/><path d="M8 9h8l1 4-1 9H9L8 13z"/><path d="M10 13h4"/>',
+  new:'<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.5 6.3L12 16.9 6.3 20.1l1.5-6.3-4.8-4.3 6.4-.6L12 3z"/>'
 };
 
 // Фото — открытые файлы Wikimedia Commons (свободные лицензии), отдаются через Special:FilePath.
@@ -60,9 +62,9 @@ const IMG = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
 const PHOTO = {
   coal: IMG+'Charcoal_briquettes_Namibia.jpg?width=500',
   hookah: IMG+'Hookah_2.jpg?width=500',
-  hose: IMG+'Hookah_2.jpg?width=500',
   tongs: IMG+'Tongs1.JPG?width=500',
   foil: IMG+'Aluminium_foil_closeup.jpg?width=500',
+  bowl: IMG+'Hookah_0890.jpg?width=500',
   vape1: IMG+'Vape_juice.jpg?width=500',
   vape2: IMG+'CBD_Vape_Oil_E-Liquid_Bottles.jpg?width=500',
 };
@@ -76,69 +78,80 @@ const TPHOTO = {
 };
 
 const PRODUCTS = [
-  {id:'darkside-topgum', category:'tobacco', brand:'Dark Side', name:'Top Gum', volumeDefault:'100г', price:1590, oldPrice:1990, badge:'sale', rating:4.9, reviews:124, image:TPHOTO.darkside, inStock:true,
+  {id:'darkside-topgum', category:'tobacco', brand:'Dark Side', name:'Top Gum', volumeDefault:'100г', price:1590, oldPrice:1990, badge:'sale', rating:4.9, reviews:124, image:TPHOTO.darkside, inStock:true, country:'Россия',
     taste:'Ягоды', strengthTag:'Средняя',
     flavors:['#B8703F','#8AA06B'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:1, volumes:['25г','100г'], volumeIndex:1,
     description:'Ягодная жевательная резинка — сладкий, узнаваемый вкус линейки Core. Ровное горение весь сеанс, плотный дым.'},
-  {id:'tangiers-canemint', category:'tobacco', brand:'Tangiers', name:'Noir Cane Mint', volumeDefault:'100г', price:1890, badge:'new', rating:4.7, reviews:156, image:null, inStock:true,
+  {id:'tangiers-canemint', category:'tobacco', brand:'Tangiers', name:'Noir Cane Mint', volumeDefault:'100г', price:1890, badge:'new', rating:4.7, reviews:156, image:null, inStock:true, country:'США',
     taste:'Мята', strengthTag:'Крепкая',
     flavors:['#8AA06B','#2E3A24'], strengths:['Средний','Крепкий'], strengthDefault:1, volumes:['100г','250г'], volumeIndex:0,
     description:'Насыщенный табак линейки Noir с холодной мятой и тростниковой сладостью. Для опытных курильщиков, долгое густое облако.'},
-  {id:'serbetli-mango', category:'tobacco', brand:'Serbetli', name:'Mango', volumeDefault:'50г', price:790, badge:null, rating:4.6, reviews:88, image:null, inStock:true,
+  {id:'serbetli-mango', category:'tobacco', brand:'Serbetli', name:'Mango', volumeDefault:'50г', price:790, badge:null, rating:4.6, reviews:88, image:null, inStock:true, country:'Россия',
     taste:'Фрукты', strengthTag:'Лёгкая',
     flavors:['#D9A441','#F5C242'], strengths:['Лёгкий','Средний'], strengthDefault:0, volumes:['50г'], volumeIndex:0,
     description:'Сочный спелый манго — лёгкая, некрепкая смесь для длинных дружеских сессий.'},
-  {id:'blackburn-mandarin', category:'tobacco', brand:'Blackburn', name:'Мандариновая газировка', volumeDefault:'100г', price:850, badge:'hit', rating:4.8, reviews:186, image:TPHOTO.blackburn, inStock:true,
+  {id:'blackburn-mandarin', category:'tobacco', brand:'Blackburn', name:'Мандариновая газировка', volumeDefault:'100г', price:850, badge:'hit', rating:4.8, reviews:186, image:TPHOTO.blackburn, inStock:true, country:'Россия',
     taste:'Фрукты', strengthTag:'Средняя',
     flavors:['#D9A441','#C1553D'], strengths:['Лёгкий','Средний','Крепкий'], strengthDefault:1, volumes:['25г','100г','250г'], volumeIndex:1,
     description:'Освежающий вкус мандариновой газировки — цитрусовая кислинка и лёгкая сладость с игристой ноткой.'},
-  {id:'overdose-coffee', category:'tobacco', brand:'Overdose', name:'Кофе', volumeDefault:'100г', price:830, badge:null, rating:4.7, reviews:134, image:TPHOTO.overdose, inStock:true,
+  {id:'overdose-coffee', category:'tobacco', brand:'Overdose', name:'Кофе', volumeDefault:'100г', price:830, badge:null, rating:4.7, reviews:134, image:TPHOTO.overdose, inStock:true, country:'Россия',
     taste:'Кофе', strengthTag:'Крепкая',
     flavors:['#4A3A20','#8B5E34'], strengths:['Средний','Крепкий'], strengthDefault:1, volumes:['25г','100г','250г'], volumeIndex:1,
     description:'Насыщенный вкус свежесваренного кофе с лёгкой горчинкой. Плотная тяга, густой дым.'},
-  {id:'musthave-marula', category:'tobacco', brand:'Must Have', name:'Marula', volumeDefault:'100г', price:780, badge:null, rating:4.6, reviews:97, image:TPHOTO.musthave, inStock:true,
+  {id:'musthave-marula', category:'tobacco', brand:'Must Have', name:'Marula', volumeDefault:'100г', price:780, badge:null, rating:4.6, reviews:97, image:TPHOTO.musthave, inStock:true, country:'Россия',
     taste:'Фрукты', strengthTag:'Лёгкая',
     flavors:['#D9A441','#8AA06B'], strengths:['Лёгкий','Средний'], strengthDefault:0, volumes:['25г','100г','250г'], volumeIndex:1,
     description:'Экзотический фрукт марула — сладкий, слегка терпкий вкус с фруктовой сочностью.'},
-  {id:'bonche-chocolate', category:'tobacco', brand:'Bonche', name:'Dark Chocolate', volumeDefault:'100г', price:820, badge:null, rating:4.7, reviews:112, image:TPHOTO.bonche, inStock:true,
+  {id:'bonche-chocolate', category:'tobacco', brand:'Bonche', name:'Dark Chocolate', volumeDefault:'100г', price:820, badge:null, rating:4.7, reviews:112, image:TPHOTO.bonche, inStock:true, country:'Россия',
     taste:'Шоколад', strengthTag:'Крепкая',
     flavors:['#4A3A20','#241D15'], strengths:['Средний','Крепкий'], strengthDefault:1, volumes:['25г','100г','250г'], volumeIndex:1,
     description:'Тёмный шоколад — глубокий, слегка горьковатый вкус какао без лишней приторности.'},
 
-  {id:'alpha-hookah-modelx', category:'hookahs', brand:'Alpha Hookah', name:'Model X', volumeDefault:'', price:12990, badge:null, rating:4.8, reviews:63, image:PHOTO.hookah, inStock:true,
+  {id:'alpha-hookah-modelx', category:'hookahs', brand:'Alpha Hookah', name:'Model X', volumeDefault:'', price:12990, badge:null, rating:4.8, reviews:63, image:PHOTO.hookah, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Флагманская модель для домашних и лаунж-сессий. Устойчивая база, тройная система очистки дыма.'},
-  {id:'hoob-sirius', category:'hookahs', brand:'HOOB', name:'Sirius', volumeDefault:'', price:9990, badge:'new', rating:4.6, reviews:29, image:PHOTO.hookah, inStock:true,
+  {id:'hoob-sirius', category:'hookahs', brand:'HOOB', name:'Sirius', volumeDefault:'', price:9990, badge:'new', rating:4.6, reviews:29, image:PHOTO.hookah, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Компактный кальян с керамической чашей в комплекте. Лёгкая протяжка, стабильный жар.'},
 
-  {id:'coal-cocobrico-24', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'hit', rating:4.9, reviews:301, image:PHOTO.coal, inStock:true,
+  {id:'bowl-phunnel', category:'bowls', brand:BRAND_NAME, name:'Чаша Phunnel M', volumeDefault:'', price:990, badge:null, rating:4.8, reviews:44, image:PHOTO.bowl, inStock:true, country:'Россия',
+    flavors:[], strengths:[], strengthDefault:0, volumes:['M','L'], volumeIndex:0,
+    description:'Керамическая чаша фаннел для плотного дыма и равномерного прогрева табака.'},
+  {id:'bowl-alpha', category:'bowls', brand:'Alpha Hookah', name:'Чаша Kama', volumeDefault:'', price:1290, badge:'new', rating:4.7, reviews:21, image:PHOTO.bowl, inStock:true, country:'Россия',
+    flavors:[], strengths:[], strengthDefault:0, volumes:['M'], volumeIndex:0,
+    description:'Глиняная чаша с толстыми стенками — держит жар дольше, подходит для крепких смесей.'},
+
+  {id:'coal-cocobrico-24', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'hit', rating:4.9, reviews:301, image:PHOTO.coal, inStock:true, country:'Индонезия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['0.5 кг','1 кг','3 кг'], volumeIndex:1,
     description:'Быстрое розжигание, долгое горение без запаха и лишнего пепла. 72 кубика на упаковку.'},
-  {id:'coal-cocobrico-26', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 26мм', volumeDefault:'1 кг', price:480, badge:null, rating:4.8, reviews:118, image:PHOTO.coal, inStock:true,
+  {id:'coal-cocobrico-26', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 26мм', volumeDefault:'1 кг', price:480, badge:null, rating:4.8, reviews:118, image:PHOTO.coal, inStock:true, country:'Индонезия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['1 кг','3 кг'], volumeIndex:0,
     description:'Крупный кубик для долгих сессий, ровный жар без перепадов температуры.'},
 
-  {id:'acc-tongs', category:'accessories', brand:'SVERDLOVSK Wings', name:'Щипцы для углей «Радуга»', volumeDefault:'', price:350, badge:'hit', rating:4.7, reviews:23, image:PHOTO.tongs, inStock:true,
+  {id:'acc-tongs', category:'accessories', brand:'SVERDLOVSK Wings', name:'Щипцы для углей «Радуга»', volumeDefault:'', price:350, badge:'hit', rating:4.7, reviews:23, image:PHOTO.tongs, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Нержавеющая сталь, удобный хват, подходит для любых углей.'},
-  {id:'acc-mouthpiece', category:'accessories', brand:BRAND_NAME, name:'Мундштук силиконовый', volumeDefault:'', price:450, badge:null, rating:4.6, reviews:38, image:null, inStock:true,
+  {id:'acc-mouthpiece', category:'accessories', brand:BRAND_NAME, name:'Мундштук силиконовый', volumeDefault:'', price:450, badge:null, rating:4.6, reviews:38, image:null, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Многоразовый силиконовый мундштук, легко моется, плотно садится на шланг.'},
-  {id:'acc-shaft', category:'accessories', brand:BRAND_NAME, name:'Шахта для кальяна (запасная)', volumeDefault:'', price:3500, badge:null, rating:4.8, reviews:12, image:PHOTO.hookah, inStock:false,
+  {id:'acc-shaft', category:'accessories', brand:BRAND_NAME, name:'Шахта для кальяна (запасная)', volumeDefault:'', price:3500, badge:null, rating:4.8, reviews:12, image:PHOTO.hookah, inStock:false, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Запасная шахта из нержавеющей стали, совместима с большинством современных кальянов.'},
-  {id:'acc-hose', category:'accessories', brand:BRAND_NAME, name:'Силиконовый шланг', volumeDefault:'1.5 м', price:1450, badge:null, rating:4.6, reviews:31, image:PHOTO.hose, inStock:true,
-    flavors:[], strengths:[], strengthDefault:0, volumes:['1.5 м','2 м'], volumeIndex:0,
-    description:'Моющийся силиконовый шланг без запаха пластика. Съёмный мундштук, лёгкая протяжка дыма.'},
-  {id:'acc-foil', category:'accessories', brand:BRAND_NAME, name:'Фольга для чаши', volumeDefault:'10 м', price:290, badge:null, rating:4.5, reviews:19, image:PHOTO.foil, inStock:true,
+  {id:'acc-foil', category:'accessories', brand:BRAND_NAME, name:'Фольга для чаши', volumeDefault:'10 м', price:290, badge:null, rating:4.5, reviews:19, image:PHOTO.foil, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['10 м'], volumeIndex:0,
     description:'Плотная пищевая фольга для розжига на чаше. Держит жар равномерно, не рвётся при проколе.'},
 
-  {id:'vape-mango', category:'vape', brand:BRAND_NAME+' Liquids', name:'Манго-лёд', volumeDefault:'30мл', price:590, badge:'hit', rating:4.8, reviews:142, image:PHOTO.vape1, inStock:true,
+  {id:'drink-cola', category:'drinks', brand:BRAND_NAME, name:'Кола, стекло', volumeDefault:'0.33 л', price:190, badge:null, rating:4.7, reviews:52, image:null, inStock:true, country:'Россия',
+    flavors:[], strengths:[], strengthDefault:0, volumes:['0.33 л'], volumeIndex:0,
+    description:'Классический освежающий напиток к кальяну. Подаётся охлаждённым.'},
+  {id:'drink-mors', category:'drinks', brand:BRAND_NAME, name:'Морс ягодный', volumeDefault:'0.3 л', price:120, badge:'new', rating:4.8, reviews:27, image:null, inStock:true, country:'Россия',
+    flavors:[], strengths:[], strengthDefault:0, volumes:['0.3 л'], volumeIndex:0,
+    description:'Домашний ягодный морс без сахара — освежает и подчёркивает вкус табака.'},
+
+  {id:'vape-mango', category:'vape', brand:BRAND_NAME+' Liquids', name:'Манго-лёд', volumeDefault:'30мл', price:590, badge:'hit', rating:4.8, reviews:142, image:PHOTO.vape1, inStock:true, country:'Россия',
     flavors:['#D9A441','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:1, volumes:['30мл','60мл'], volumeIndex:0,
     description:'Сочный манго с прохладным холодком на выдохe. Плотный пар, насыщенный вкус в каждой затяжке.'},
-  {id:'vape-cola', category:'vape', brand:BRAND_NAME+' Liquids', name:'Кола-лайм', volumeDefault:'30мл', price:590, badge:'new', rating:4.6, reviews:64, image:PHOTO.vape2, inStock:true,
+  {id:'vape-cola', category:'vape', brand:BRAND_NAME+' Liquids', name:'Кола-лайм', volumeDefault:'30мл', price:590, badge:'new', rating:4.6, reviews:64, image:PHOTO.vape2, inStock:true, country:'Россия',
     flavors:['#B8703F','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:0, volumes:['30мл','60мл'], volumeIndex:0,
     description:'Классическая кола с лёгкой лаймовой кислинкой. Сбалансированная сладость, лёгкий бросок в горло.'},
 ];
@@ -146,11 +159,6 @@ const PRODUCTS = [
 function getProduct(id){return PRODUCTS.find(p=>p.id===id);}
 function getCategory(id){return CATEGORIES.find(c=>c.id===id);}
 function categoryBrands(catId){ return [...new Set(PRODUCTS.filter(p=>p.category===catId).map(p=>p.brand))]; }
-function categoryPriceRange(catId){
-  const items = catId ? PRODUCTS.filter(p=>p.category===catId) : PRODUCTS;
-  const prices = items.map(p=>p.price);
-  return {min: Math.min(...prices), max: Math.max(...prices)};
-}
 
 const PROMO_CODES = {
   'SMOKE20': {discount:0.2, label:'-20% на угли', appliesTo:'coal', expiry:'20.09'}
@@ -176,6 +184,13 @@ const PROMOTIONS = [
 
 const RECENT_SEARCHES = ['Dark Side Top Gum', 'Угли кокосовые', 'Tangiers'];
 
+const ADDRESSES = [
+  {id:'a1', label:'Дом', address:'ул. Тверская, 24, кв. 56', comment:'Домофон 56К · этаж 4', isDefault:true},
+  {id:'a2', label:'Работа', address:'Пресненская наб., 8, офис 312', comment:'', isDefault:false},
+];
+
+const PROFILE_USER = {name:'Ринат М.', phone:'+7 999 123-45-67', email:''};
+
 const NOTIFICATIONS = [
   {icon:'truck', title:'Ваша посылка в пути', text:'Заказ №1244 уже в городе', time:'10.05', unread:true},
   {icon:'gift', title:'Скидка 20% на Dark Side', text:'Любимые вкусы по выгодной цене', time:'08.05', unread:true},
@@ -198,15 +213,18 @@ const REFERRALS = [
   {name:'Мария С.', date:'5 сентября', status:'pending', reward:0},
 ];
 
-/* ---------- колесо фортуны ---------- */
+/* ---------- колесо фортуны ----------
+   Состав призов и их веса в реальном проекте отдаёт бэкенд (probability logic
+   не должна жить во фронтенде) — здесь это заглушка, инкапсулированная в
+   WheelService (см. js/services.js), а не разбросанная по обработчикам кликов. */
 const WHEEL_PRIZES = [
-  {label:'+20', type:'bonus', value:20, title:'+20 бонусов', color:'#F1F2F4'},
-  {label:'+50', type:'bonus', value:50, title:'+50 бонусов', color:'#F52B32'},
-  {label:'−10%', type:'promo', code:'WHEEL10', discount:0.10, title:'Промокод −10%', color:'#F1F2F4'},
+  {label:'−5%', type:'promo', code:'WHEEL5', discount:0.05, title:'Промокод −5%', color:'#F1F2F4'},
   {label:'+100', type:'bonus', value:100, title:'+100 бонусов', color:'#F52B32'},
-  {label:'0 ₽', type:'freeDelivery', title:'Бесплатная доставка', color:'#F1F2F4'},
+  {label:'−10%', type:'promo', code:'WHEEL10', discount:0.10, title:'Промокод −10%', color:'#F1F2F4'},
   {label:'+200', type:'bonus', value:200, title:'+200 бонусов', color:'#F52B32'},
-  {label:'↻', type:'again', title:'Ещё одна попытка', color:'#F1F2F4'},
-  {label:'+30', type:'bonus', value:30, title:'+30 бонусов', color:'#F52B32'},
+  {label:'0 ₽', type:'freeDelivery', title:'Бесплатная доставка', color:'#F1F2F4'},
+  {label:'+50', type:'bonus', value:50, title:'+50 бонусов', color:'#F52B32'},
+  {label:'−15%', type:'promo', code:'WHEEL15', discount:0.15, title:'Промокод −15%', color:'#F1F2F4'},
+  {label:'↻', type:'again', title:'Попробуйте ещё раз', color:'#F52B32'},
 ];
-const WHEEL_WEIGHTS = [18, 15, 8, 10, 12, 5, 20, 12];
+const WHEEL_WEIGHTS = [15, 12, 8, 8, 12, 18, 5, 22];
