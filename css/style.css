@@ -195,7 +195,7 @@ textarea.input{height:auto;min-height:88px;padding:12px 14px;resize:vertical;lin
 
 .category-row{display:flex;gap:10px;padding:0 var(--sp-4);overflow-x:auto;}
 .category-item{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:64px;background:none;border:none;font-family:inherit;cursor:pointer;}
-.category-icon{width:56px;height:56px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);}
+.category-icon{width:56px;height:56px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);}
 .category-icon.active{background:var(--primary-tint);border-color:var(--primary);color:var(--primary);}
 .category-item span{font-size:11px;color:var(--text-secondary);font-weight:500;}
 .category-item.active span{color:var(--text);font-weight:600;}
