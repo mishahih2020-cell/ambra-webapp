@@ -156,6 +156,43 @@ const PRODUCTS = [
     description:'Классическая кола с лёгкой лаймовой кислинкой. Сбалансированная сладость, лёгкий бросок в горло.'},
 ];
 
+// Заводской набор товаров (для кнопки "Сбросить к заводским настройкам" в админке) —
+// снимок делается ДО применения сохранённых правок пользователя.
+const FACTORY_PRODUCTS = JSON.parse(JSON.stringify(PRODUCTS));
+(function loadProductOverrides(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('hks_products_override') || 'null');
+    if(saved && Array.isArray(saved) && saved.length){
+      PRODUCTS.length = 0;
+      saved.forEach(p=>PRODUCTS.push(p));
+    }
+  }catch(e){}
+})();
+// Вызывать после любого изменения PRODUCTS через админку — сохраняет текущий
+// массив целиком (заводские товары + правки) как единственный источник правды
+// при следующей загрузке. В боевом варианте здесь будет запрос к API.
+function saveProductOverrides(){
+  try{ localStorage.setItem('hks_products_override', JSON.stringify(PRODUCTS)); }catch(e){}
+}
+function resetProductOverrides(){
+  localStorage.removeItem('hks_products_override');
+  PRODUCTS.length = 0;
+  JSON.parse(JSON.stringify(FACTORY_PRODUCTS)).forEach(p=>PRODUCTS.push(p));
+}
+function slugify(text){
+  return (text||'').toLowerCase()
+    .replace(/[а-яё]/g, function(ch){
+      const map = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+      return map[ch] || ch;
+    })
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'item';
+}
+function uniqueProductId(base){
+  let id = base, n = 2;
+  while(getProduct(id)){ id = base+'-'+n; n++; }
+  return id;
+}
+
 function getProduct(id){return PRODUCTS.find(p=>p.id===id);}
 function getCategory(id){return CATEGORIES.find(c=>c.id===id);}
 function categoryBrands(catId){ return [...new Set(PRODUCTS.filter(p=>p.category===catId).map(p=>p.brand))]; }

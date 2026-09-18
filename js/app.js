@@ -323,6 +323,8 @@ function render(){
     case 'personal-data': html = viewPersonalData(); break;
     case 'addresses': html = viewAddresses(); break;
     case 'support': html = viewSupport(); break;
+    case 'admin-products': html = viewAdminProducts(); break;
+    case 'admin-product-edit': html = viewAdminProductEdit(param); break;
     default: html = viewHome(); nav='home';
   }
 
@@ -345,6 +347,7 @@ function goBack(){
     notifications:'home', promotions:'profile', wheel:'promotions', referral:'promotions',
     about:'profile', orders:'profile', search:'catalog',
     'personal-data':'profile', addresses:'profile', support:'profile',
+    'admin-products':'about', 'admin-product-edit':'admin-products',
   };
   navigate('#/'+(map[name]||'home'));
 }
@@ -433,9 +436,9 @@ function toggleInArray(arr, val){
   if(i>-1) arr.splice(i,1); else arr.push(val);
 }
 function checkboxRow(label, checked, action, value){
-  return '<label class="switch-row" style="cursor:pointer;padding:2px 0;" data-action="'+action+'" data-value="'+value+'">'+
+  return '<label class="switch-row" style="cursor:pointer;padding:10px 0;border-bottom:1px solid var(--border);" data-action="'+action+'" data-value="'+value+'">'+
     '<span style="font-size:14px;color:var(--text);">'+label+'</span>'+
-    '<span style="width:20px;height:20px;border-radius:6px;border:1.5px solid '+(checked?'var(--primary)':'var(--border)')+';background:'+(checked?'var(--primary)':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(checked?svgIcon(ICONS.check,13):'')+'</span>'+
+    '<span style="width:22px;height:22px;border-radius:6px;border:1.5px solid '+(checked?'var(--primary)':'var(--border)')+';background:'+(checked?'var(--primary)':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(checked?svgIcon(ICONS.check,14):'')+'</span>'+
   '</label>';
 }
 function chipToggle(label, checked, action, value){
@@ -543,7 +546,7 @@ function viewHome(){
       '</button>'+
     '</div>'+
     '<div class="hero-banner" data-nav="catalog">'+
-      '<div class="h1">Премиальные табаки и кальяны</div>'+
+      '<div class="display">Премиальные табаки и кальяны</div>'+
       '<p>Только оригинальная продукция</p>'+
       '<button class="btn btn-primary" style="background:#fff;color:var(--primary);width:fit-content;margin-top:6px;">Перейти в каталог</button>'+
     '</div>'+
@@ -934,7 +937,7 @@ function viewProfile(){
       profileRow('gift','Бонусы','promotions')+
       profileRow('bell','Уведомления','notifications')+
       profileRow('support','Поддержка','support')+
-      profileRow('info','О магазине','about')+
+      profileRow('settings','Настройки','about')+
     '</div>'+
   '</div></div>'+
   bottomNav('profile');
@@ -1005,19 +1008,125 @@ function viewSupport(){
 }
 
 function viewAbout(){
-  return headerBack('О приложении')+
-  '<div class="content"><div style="display:flex;flex-direction:column;gap:18px;padding:20px;">'+
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 0;">'+
+  return headerBack('Настройки')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:18px;padding:20px 0;">'+
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0 4px;">'+
       '<div style="width:56px;height:56px;border-radius:14px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;">H</div>'+
       '<div class="h2">'+BRAND_NAME+'</div>'+
       '<div style="font-size:12px;color:var(--text-tertiary);">Версия 1.0.0</div>'+
     '</div>'+
-    '<div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Премиальный магазин табака, кальянов, угля и аксессуаров. Только оригинальная продукция от проверенных брендов.</div>'+
-    '<div class="divider"></div>'+
-    '<label class="switch-row" style="cursor:pointer;">'+
+    '<div style="font-size:13px;color:var(--text-secondary);line-height:1.6;padding:0 20px;">Премиальный магазин табака, кальянов, угля и аксессуаров. Только оригинальная продукция от проверенных брендов.</div>'+
+    '<div class="divider" style="margin:0;"></div>'+
+    profileRow('box','Управление товарами','admin-products')+
+    '<div class="divider" style="margin:0;"></div>'+
+    '<label class="switch-row" style="cursor:pointer;padding:14px 20px;">'+
       '<span style="font-size:13px;color:var(--text-secondary);">Симулировать офлайн-режим (демо)</span>'+
       '<div class="switch'+(STATE.simulateOffline?' on':'')+'" data-action="toggle-offline"></div>'+
     '</label>'+
+  '</div></div>';
+}
+
+/* ================= ADMIN: управление товарами (правки сохраняются в localStorage) ================= */
+
+const BADGE_LABELS = {'':'Без бейджа', sale:'Скидка', new:'Новинка', hit:'Хит'};
+let adminDraft = null; // {category, badge, inStock, image} — поля, требующие перерисовки при выборе
+
+function viewAdminProducts(){
+  return headerBack('Товары', '<button class="icon-btn" data-nav="admin-product-edit/new">'+svgIcon(ICONS.plus,20)+'</button>')+
+  '<div class="content"><div style="display:flex;flex-direction:column;">'+
+    PRODUCTS.map(function(p){return (
+      '<div class="admin-row">'+
+        '<div class="thumb">'+productPhotoHtml(p)+'</div>'+
+        '<button style="flex:1;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0;" data-nav="admin-product-edit/'+p.id+'">'+
+          '<span style="font-size:11px;color:var(--text-tertiary);">'+p.brand+'</span>'+
+          '<span style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+p.name+'</span>'+
+          '<span style="font-size:12px;color:var(--text-secondary);">'+formatPrice(p.price)+(p.inStock===false?' · нет в наличии':'')+'</span>'+
+        '</button>'+
+        '<button class="icon-btn" data-action="admin-delete-product" data-id="'+p.id+'" style="color:var(--text-tertiary);">'+svgIcon(ICONS.close,17)+'</button>'+
+      '</div>'
+    );}).join('')+
+    '<button class="btn btn-secondary btn-block" style="margin:20px;" data-action="admin-reset-products">Сбросить к заводским настройкам</button>'+
+  '</div></div>';
+}
+
+// Поля формы, которые не требуют перерисовки при каждом нажатии клавиши (текст/textarea) —
+// читаются напрямую из DOM. Синхронизируются в adminDraft только перед перерисовкой,
+// которую вызывают чипы/переключатели (иначе перерисовка стирала бы введённый текст).
+const ADMIN_TEXT_FIELDS = ['adminName','adminBrand','adminPrice','adminOldPrice','adminVolumeDefault','adminVolumes','adminTaste','adminStrength','adminCountry','adminDescription'];
+function syncAdminDraftFields(){
+  if(!adminDraft) return;
+  ADMIN_TEXT_FIELDS.forEach(function(fid){
+    const el = document.getElementById(fid);
+    if(el) adminDraft[fid] = el.value;
+  });
+}
+
+function viewAdminProductEdit(id){
+  const isNew = id==='new';
+  const p = isNew ? null : getProduct(id);
+  if(!isNew && !p) return headerBack('Товар')+'<div class="content"><div class="empty-state"><div class="empty-title">Товар не найден</div></div></div>';
+  if(!adminDraft || adminDraft.id !== id){
+    adminDraft = {
+      id: id,
+      category: p ? p.category : CATEGORIES[0].id,
+      badge: p ? (p.badge||'') : '',
+      inStock: p ? p.inStock!==false : true,
+      image: p ? p.image : null,
+      adminName: p?p.name:'', adminBrand: p?p.brand:'',
+      adminPrice: p?p.price:'', adminOldPrice: p&&p.oldPrice?p.oldPrice:'',
+      adminVolumeDefault: p?p.volumeDefault:'', adminVolumes: p&&p.volumes?p.volumes.join(', '):'',
+      adminTaste: p?(p.taste||''):'', adminStrength: p?(p.strengthTag||''):'',
+      adminCountry: p?(p.country||''):'', adminDescription: p?p.description:'',
+    };
+  }
+  const d = adminDraft;
+  function field(fid, label, placeholder, type){
+    const value = d[fid];
+    return '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">'+label+'</label>'+
+      '<input id="'+fid+'" class="input" type="'+(type||'text')+'" value="'+(value!=null?String(value).replace(/"/g,'&quot;'):'')+'" placeholder="'+(placeholder||'')+'">'+
+    '</div>';
+  }
+  return headerBack(isNew?'Новый товар':'Редактировать товар')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:16px;padding:18px 20px 24px;">'+
+    '<div style="display:flex;flex-direction:column;gap:10px;align-items:center;">'+
+      '<div class="thumb-photo" style="width:120px;height:120px;">'+(d.image?'<img src="'+d.image+'" alt="">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);font-size:12px;">Нет фото</div>')+'</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<label class="upload-btn">'+svgIcon(ICONS.box,15)+' Загрузить фото<input id="adminImageFile" type="file" accept="image/*" style="display:none;"></label>'+
+      '</div>'+
+      '<input id="adminImageUrl" class="input" placeholder="или вставьте ссылку на фото (https://...)" value="'+(d.image&&d.image.indexOf('data:')!==0?d.image.replace(/"/g,'&quot;'):'')+'">'+
+    '</div>'+
+    field('adminName','Название', 'Например, Дабл Апл')+
+    field('adminBrand','Бренд', 'Например, Dark Side')+
+    '<div style="display:flex;flex-direction:column;gap:8px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Категория</label>'+
+      '<div class="chip-select">'+CATEGORIES.map(function(c){return '<div class="chip'+(d.category===c.id?' active':'')+'" data-action="admin-pick-category" data-value="'+c.id+'">'+c.name+'</div>';}).join('')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:12px;">'+
+      '<div style="flex:1;">'+field('adminPrice','Цена, ₽', '990', 'number')+'</div>'+
+      '<div style="flex:1;">'+field('adminOldPrice','Старая цена, ₽', 'необязательно', 'number')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Бейдж на карточке</label>'+
+      '<div class="chip-select">'+Object.keys(BADGE_LABELS).map(function(b){return '<div class="chip'+(d.badge===b?' active':'')+'" data-action="admin-pick-badge" data-value="'+b+'">'+BADGE_LABELS[b]+'</div>';}).join('')+'</div>'+
+    '</div>'+
+    '<label class="switch-row" style="cursor:pointer;">'+
+      '<span style="font-size:14px;color:var(--text);">В наличии</span>'+
+      '<div class="switch'+(d.inStock?' on':'')+'" data-action="admin-toggle-instock"></div>'+
+    '</label>'+
+    field('adminVolumeDefault','Объём по умолчанию', 'например, 100г')+
+    field('adminVolumes','Варианты объёма (через запятую)', 'например, 25г, 100г, 250г')+
+    '<div style="display:flex;gap:12px;">'+
+      '<div style="flex:1;">'+field('adminTaste','Вкус', 'необязательно')+'</div>'+
+      '<div style="flex:1;">'+field('adminStrength','Крепость', 'необязательно')+'</div>'+
+    '</div>'+
+    field('adminCountry','Страна', 'например, Россия')+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Описание</label>'+
+      '<textarea id="adminDescription" class="input" placeholder="Короткое описание товара">'+(d.adminDescription!=null?d.adminDescription:'')+'</textarea>'+
+    '</div>'+
+    '<button class="btn btn-primary btn-block" style="margin-top:8px;" data-action="admin-save-product">Сохранить</button>'+
+    (isNew?'':'<button class="btn btn-secondary btn-block" data-action="admin-delete-product" data-id="'+id+'">Удалить товар</button>')+
   '</div></div>';
 }
 
@@ -1086,7 +1195,7 @@ function viewOrderDetail(id){
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;">'+
       '<div class="eyebrow">Состав заказа</div>'+
-      o.items.map(function(it){ const p=getProduct(it.productId); return '<div style="display:flex;gap:12px;">'+
+      o.items.map(function(it){ const p=getProduct(it.productId); if(!p) return ''; return '<div style="display:flex;gap:12px;">'+
         '<div class="thumb-photo" style="width:52px;height:52px;">'+productPhotoHtml(p)+'</div>'+
         '<div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;color:var(--text);font-weight:600;">'+p.brand+' '+p.name+'</span><span style="font-size:11px;color:var(--text-tertiary);">× '+it.qty+'</span></div>'+
         '<span class="price" style="font-size:14px;">'+formatPrice(it.price*it.qty)+'</span>'+
@@ -1419,6 +1528,66 @@ function onGlobalClick(e){
       break;
     }
     case 'pick-orders-tab': { ordersTab = actEl.getAttribute('data-tab'); render(); break; }
+
+    case 'admin-pick-category': { syncAdminDraftFields(); adminDraft.category = actEl.getAttribute('data-value'); render(); break; }
+    case 'admin-pick-badge': { syncAdminDraftFields(); adminDraft.badge = actEl.getAttribute('data-value'); render(); break; }
+    case 'admin-toggle-instock': { syncAdminDraftFields(); adminDraft.inStock = !adminDraft.inStock; render(); break; }
+    case 'admin-save-product': {
+      const val = function(fid){ const el=document.getElementById(fid); return el ? el.value.trim() : ''; };
+      const name = val('adminName'), brand = val('adminBrand');
+      const price = parseInt(val('adminPrice'),10);
+      if(!name || !brand){ toast('Заполните название и бренд', 'err'); return; }
+      if(!price || price<=0){ toast('Укажите корректную цену', 'err'); return; }
+      const oldPriceRaw = val('adminOldPrice');
+      const volumes = val('adminVolumes').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      const volumeDefault = val('adminVolumeDefault');
+      let volumeIndex = 0;
+      if(volumes.length){ const idx = volumes.indexOf(volumeDefault); volumeIndex = idx>-1 ? idx : 0; }
+      const isNew = adminDraft.id==='new';
+      const existing = isNew ? null : getProduct(adminDraft.id);
+      const urlImage = val('adminImageUrl');
+      const finalImage = adminDraft.image!==undefined && adminDraft.image!==null ? adminDraft.image : (urlImage || null);
+      const product = Object.assign({}, existing || {
+        rating: 4.5, reviews: 0, flavors: [], strengths: [], strengthDefault: 0,
+      }, {
+        category: adminDraft.category,
+        brand: brand,
+        name: name,
+        price: price,
+        oldPrice: oldPriceRaw ? parseInt(oldPriceRaw,10) : undefined,
+        badge: adminDraft.badge || null,
+        inStock: adminDraft.inStock,
+        volumeDefault: volumeDefault,
+        volumes: volumes.length ? volumes : (existing?existing.volumes:[]),
+        volumeIndex: volumeIndex,
+        taste: val('adminTaste') || undefined,
+        strengthTag: val('adminStrength') || undefined,
+        country: val('adminCountry') || undefined,
+        description: val('adminDescription'),
+        image: finalImage,
+      });
+      if(!oldPriceRaw) delete product.oldPrice;
+      if(isNew){
+        product.id = uniqueProductId(slugify(brand+'-'+name));
+        PRODUCTS.push(product);
+      } else {
+        const idx = PRODUCTS.findIndex(function(x){return x.id===adminDraft.id;});
+        if(idx>-1) PRODUCTS[idx] = product;
+      }
+      saveProductOverrides();
+      adminDraft = null;
+      toast(isNew?'Товар добавлен':'Изменения сохранены'); haptic('success');
+      navigate('#/admin-products');
+      break;
+    }
+    case 'admin-delete-product': {
+      openConfirm('Удалить товар?', 'Товар будет удалён из каталога без возможности восстановления (кроме сброса к заводским настройкам).', 'Удалить', 'admin-delete-product', actEl.getAttribute('data-id'));
+      break;
+    }
+    case 'admin-reset-products': {
+      openConfirm('Сбросить все товары?', 'Все ваши изменения товаров будут удалены, вернутся заводские данные.', 'Сбросить', 'admin-reset-products', null);
+      break;
+    }
     case 'pick-favorites-tab': { favoritesTab = actEl.getAttribute('data-tab'); render(); break; }
 
     case 'cart-inc': { const it = STATE.cart.find(i=>i.key===actEl.getAttribute('data-key')); if(it) it.qty++; saveState(); render(); break; }
@@ -1439,6 +1608,15 @@ function onGlobalClick(e){
         if(c.action==='cart-remove'){ STATE.cart = STATE.cart.filter(i=>i.key!==c.payload); saveState(); haptic(); toast('Товар удалён'); }
         else if(c.action==='clear-cart'){ STATE.cart = []; saveState(); haptic(); toast('Корзина очищена'); }
         else if(c.action==='delete-address'){ const idx = ADDRESSES.findIndex(a=>a.id===c.payload); if(idx>-1) ADDRESSES.splice(idx,1); haptic(); toast('Адрес удалён'); }
+        else if(c.action==='admin-delete-product'){
+          const idx = PRODUCTS.findIndex(function(x){return x.id===c.payload;});
+          if(idx>-1) PRODUCTS.splice(idx,1);
+          STATE.cart = STATE.cart.filter(function(i){return i.productId!==c.payload;});
+          STATE.favorites = STATE.favorites.filter(function(fid){return fid!==c.payload;});
+          saveState(); saveProductOverrides(); haptic(); toast('Товар удалён');
+          if(parseHash().name==='admin-product-edit') navigate('#/admin-products');
+        }
+        else if(c.action==='admin-reset-products'){ resetProductOverrides(); haptic(); toast('Товары сброшены к заводским'); }
       }
       confirmSheet = null; render();
       break;
@@ -1610,6 +1788,18 @@ function onGlobalChange(e){
     currentFilters.minPrice = +document.getElementById('filterMinPrice').value;
     currentFilters.maxPrice = +document.getElementById('filterMaxPrice').value;
     if(currentFilters.minPrice>currentFilters.maxPrice){ const t=currentFilters.minPrice; currentFilters.minPrice=currentFilters.maxPrice; currentFilters.maxPrice=t; }
+    render();
+  } else if(e.target.id==='adminImageFile'){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    if(file.size > 2*1024*1024){ toast('Файл слишком большой (максимум 2 МБ)', 'err'); return; }
+    const reader = new FileReader();
+    reader.onload = function(){ syncAdminDraftFields(); adminDraft.image = reader.result; render(); };
+    reader.readAsDataURL(file);
+  } else if(e.target.id==='adminImageUrl'){
+    syncAdminDraftFields();
+    const v = e.target.value.trim();
+    adminDraft.image = v || null;
     render();
   }
 }
