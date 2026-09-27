@@ -151,6 +151,32 @@ function wheelHub(){
   return '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 2px 8px rgba(245,43,50,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;pointer-events:none;">GO</div>';
 }
 // Маленькое статичное превью колеса для карточки-входа на экране "Бонусы" (без id/анимации).
+// Крупное превью колеса для баннера на Главной — с градиентными секторами,
+// объёмным центром и лёгким наклоном (не плоская "пицца"), плюс тень под всем колесом.
+function wheelBannerSvg(){
+  const n = WHEEL_PRIZES.length, cx=44, cy=44, r=40, seg=360/n;
+  let inner = '';
+  WHEEL_PRIZES.forEach(function(p,i){
+    const a0 = (i*seg - 90) * Math.PI/180, a1 = ((i+1)*seg - 90) * Math.PI/180;
+    const x0 = (cx + r*Math.cos(a0)).toFixed(1), y0 = (cy + r*Math.sin(a0)).toFixed(1);
+    const x1 = (cx + r*Math.cos(a1)).toFixed(1), y1 = (cy + r*Math.sin(a1)).toFixed(1);
+    const fill = p.color==='#F52B32' ? 'url(#wbRed)' : 'url(#wbWhite)';
+    inner += '<path d="M'+cx+','+cy+' L'+x0+','+y0+' A'+r+','+r+' 0 0,1 '+x1+','+y1+' Z" fill="'+fill+'"/>';
+  });
+  return '<div style="flex-shrink:0;filter:drop-shadow(0 12px 20px rgba(0,0,0,0.5));transform:rotate(-8deg);">'+
+    '<svg width="92" height="92" viewBox="0 0 88 88">'+
+      '<defs>'+
+        '<linearGradient id="wbRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF6166"/><stop offset="100%" stop-color="#D91F26"/></linearGradient>'+
+        '<linearGradient id="wbWhite" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E4E5E8"/></linearGradient>'+
+        '<radialGradient id="wbHub" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#FF8285"/><stop offset="100%" stop-color="#D91F26"/></radialGradient>'+
+      '</defs>'+
+      inner+
+      '<circle cx="44" cy="44" r="41" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2.5"/>'+
+      '<circle cx="44" cy="44" r="13" fill="url(#wbHub)" stroke="#fff" stroke-width="2.5"/>'+
+    '</svg>'+
+  '</div>';
+}
+
 function wheelPreviewSvg(){
   const n = WHEEL_PRIZES.length, cx=26, cy=26, r=24, seg=360/n;
   let inner = '';
@@ -569,17 +595,18 @@ function viewHome(){
       svgIcon(ICONS.chevronRight,13,'')+
     '</button>'+
     '<div class="section" style="padding:0 var(--sp-4);">'+
-      '<button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
-        '<span style="color:var(--text-tertiary);font-size:14px;">Поиск товаров, брендов...</span>'+
+      '<button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,20)+
+        '<span style="color:var(--text-tertiary);font-size:16px;">Поиск товаров, брендов...</span>'+
       '</button>'+
     '</div>'+
-    '<div class="hero-banner" data-nav="wheel" style="flex-direction:row;align-items:center;justify-content:space-between;gap:16px;">'+
+    '<div class="wheel-banner" data-nav="wheel">'+
       '<div style="min-width:0;">'+
-        '<div class="display" style="font-size:26px;line-height:1.2;">Колесо фортуны</div>'+
-        '<p>Крутите раз в день и получайте бонусы</p>'+
-        '<button class="btn btn-primary" style="background:#fff;color:var(--primary);width:fit-content;margin-top:10px;">Крутить колесо · '+spinsAvailable()+'</button>'+
+        '<div class="eyebrow">Бонусная игра</div>'+
+        '<div class="display" style="font-size:24px;">Колесо фортуны</div>'+
+        '<p>Крутите раз в день и получайте бонусы, скидки и подарки</p>'+
+        '<div class="wb-cta">'+svgIcon(ICONS.wheel,16)+'Крутить · '+spinsAvailable()+'</div>'+
       '</div>'+
-      '<div style="flex-shrink:0;">'+wheelPreviewSvg()+'</div>'+
+      wheelBannerSvg()+
     '</div>'+
     '<div class="category-row">'+
       CATEGORIES.map(function(c){return (
@@ -612,8 +639,8 @@ function viewCatalog(){
   const items = applyFilters(base);
   return '<div class="tg-header"><span class="title">Каталог</span><span style="width:36px"></span></div>'+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:14px 0 18px;">'+
-    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
-      '<span style="color:var(--text-tertiary);font-size:14px;">Поиск товаров, брендов...</span></button></div>'+
+    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,20)+
+      '<span style="color:var(--text-tertiary);font-size:16px;">Поиск товаров, брендов...</span></button></div>'+
     '<div class="hscroll">'+
       '<div class="chip'+(catalogChip==='all'?' active':'')+'" data-action="catalog-chip" data-cat="all">Все</div>'+
       CATEGORIES.map(function(c){return '<div class="chip'+(catalogChip===c.id?' active':'')+'" data-action="catalog-chip" data-cat="'+c.id+'">'+c.name+'</div>';}).join('')+
@@ -657,7 +684,7 @@ function viewCategory(catId){
   const items = applyFilters(base);
   return headerBack(cat.name)+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:14px 0 18px;">'+
-    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
+    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,20)+
       '<span style="color:var(--text-tertiary);font-size:14px;">Поиск в категории «'+cat.name+'»</span></button></div>'+
     '<div class="hscroll">'+
       '<div class="chip'+(!currentFilters.brand.length?' active':'')+'" data-action="pick-brand" data-brand="">Все</div>'+
@@ -686,7 +713,7 @@ function viewSearch(){
   const results = q ? applyFilters(PRODUCTS.filter(function(p){ return (p.name+' '+p.brand).toLowerCase().includes(q); })) : [];
   return '<div class="tg-header"><div class="left" style="flex:1;">'+
       '<button class="icon-btn" data-back>'+svgIcon(ICONS.back,19)+'</button>'+
-      '<div class="search-field" style="margin-left:2px;">'+svgIcon(ICONS.search,15)+
+      '<div class="search-field" style="margin-left:2px;">'+svgIcon(ICONS.search,20)+
         '<input id="searchInput" type="text" placeholder="Поиск товаров, брендов..." value="'+searchQuery.replace(/"/g,'&quot;')+'" autocomplete="off" autofocus>'+
         (searchQuery?'<button class="clear-btn" data-action="clear-search">'+svgIcon(ICONS.close,15)+'</button>':'')+
       '</div></div></div>'+
