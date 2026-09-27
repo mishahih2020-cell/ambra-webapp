@@ -149,10 +149,11 @@ textarea.input{height:auto;min-height:88px;padding:12px 14px;resize:vertical;lin
 .chip-select{display:flex;gap:8px;flex-wrap:wrap;}
 .upload-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:var(--radius-btn);background:var(--surface);border:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
 .search-field{
-  display:flex;align-items:center;gap:8px;height:46px;border-radius:var(--radius-input);
-  background:var(--surface);border:1px solid var(--border);padding:0 14px;flex:1;min-width:0;
+  display:flex;align-items:center;gap:10px;height:52px;border-radius:var(--radius-card);
+  background:var(--surface);border:1px solid var(--border);padding:0 16px;flex:1;min-width:0;
+  color:var(--text-tertiary);
 }
-.search-field input{flex:1;min-width:0;background:none;border:none;color:var(--text);font-size:14px;font-family:inherit;}
+.search-field input{flex:1;min-width:0;background:none;border:none;color:var(--text);font-size:15px;font-family:inherit;}
 .search-field input:focus{outline:none;}
 .search-field input::placeholder{color:var(--text-tertiary);}
 .search-field .clear-btn{color:var(--text-tertiary);flex-shrink:0;}

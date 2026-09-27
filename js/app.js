@@ -569,14 +569,17 @@ function viewHome(){
       svgIcon(ICONS.chevronRight,13,'')+
     '</button>'+
     '<div class="section" style="padding:0 var(--sp-4);">'+
-      '<button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,16)+
+      '<button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
         '<span style="color:var(--text-tertiary);font-size:14px;">Поиск товаров, брендов...</span>'+
       '</button>'+
     '</div>'+
-    '<div class="hero-banner" data-nav="catalog">'+
-      '<div class="display">Премиальные табаки и кальяны</div>'+
-      '<p>Только оригинальная продукция</p>'+
-      '<button class="btn btn-primary" style="background:#fff;color:var(--primary);width:fit-content;margin-top:6px;">Перейти в каталог</button>'+
+    '<div class="hero-banner" data-nav="wheel" style="flex-direction:row;align-items:center;justify-content:space-between;gap:16px;">'+
+      '<div style="min-width:0;">'+
+        '<div class="display" style="font-size:26px;line-height:1.2;">Колесо фортуны</div>'+
+        '<p>Крутите раз в день и получайте бонусы</p>'+
+        '<button class="btn btn-primary" style="background:#fff;color:var(--primary);width:fit-content;margin-top:10px;">Крутить колесо · '+spinsAvailable()+'</button>'+
+      '</div>'+
+      '<div style="flex-shrink:0;">'+wheelPreviewSvg()+'</div>'+
     '</div>'+
     '<div class="category-row">'+
       CATEGORIES.map(function(c){return (
@@ -609,7 +612,7 @@ function viewCatalog(){
   const items = applyFilters(base);
   return '<div class="tg-header"><span class="title">Каталог</span><span style="width:36px"></span></div>'+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:14px 0 18px;">'+
-    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,16)+
+    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
       '<span style="color:var(--text-tertiary);font-size:14px;">Поиск товаров, брендов...</span></button></div>'+
     '<div class="hscroll">'+
       '<div class="chip'+(catalogChip==='all'?' active':'')+'" data-action="catalog-chip" data-cat="all">Все</div>'+
@@ -654,7 +657,7 @@ function viewCategory(catId){
   const items = applyFilters(base);
   return headerBack(cat.name)+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:14px 0 18px;">'+
-    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,16)+
+    '<div class="section"><button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,18)+
       '<span style="color:var(--text-tertiary);font-size:14px;">Поиск в категории «'+cat.name+'»</span></button></div>'+
     '<div class="hscroll">'+
       '<div class="chip'+(!currentFilters.brand.length?' active':'')+'" data-action="pick-brand" data-brand="">Все</div>'+
