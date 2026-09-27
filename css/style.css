@@ -29,6 +29,11 @@
 
   --tg-safe-top: env(safe-area-inset-top, 0px);
   --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Отступ под собственные кнопки Telegram (закрыть/меню) в полноэкранном режиме —
+     задаётся из JS через tg.contentSafeAreaInset, см. applyTelegramContentInset в app.js.
+     0px по умолчанию вне Telegram. */
+  --tg-content-safe-top: 0px;
+  --tg-content-safe-bottom: 0px;
 }
 
 *,*::before,*::after{box-sizing:border-box;}
@@ -65,7 +70,7 @@ img{max-width:100%;display:block;}
   background:var(--bg);
   border-bottom:1px solid var(--border);
   flex-shrink:0;
-  padding-top:var(--tg-safe-top);
+  padding-top:calc(var(--tg-safe-top) + var(--tg-content-safe-top));
 }
 .tg-header .left{display:flex;align-items:center;gap:var(--sp-2);min-width:0;}
 .tg-header .brand{display:flex;align-items:center;gap:8px;}
@@ -81,7 +86,7 @@ img{max-width:100%;display:block;}
 /* ===== bottom nav — exactly 5 items ===== */
 .bottom-nav{
   display:flex;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0;
-  padding-bottom:var(--tg-safe-bottom);
+  padding-bottom:calc(var(--tg-safe-bottom) + var(--tg-content-safe-bottom));
 }
 .bottom-nav-row{display:flex;padding:8px 4px;width:100%;min-height:56px;}
 .nav-item{

@@ -45,14 +45,16 @@ const CATEGORIES = [
   {id:'drinks', name:'Напитки', count:2, from:120},
   {id:'vape', name:'Жидкости', count:2, from:590},
 ];
+// Единая иконочная система (в стиле Lucide — чистые геометричные line-иконки,
+// без "рисованных" силуэтов) — используется в категориях каталога.
 const CATEGORY_ICON_PATH = {
-  tobacco:'<path d="M12 2C9 6 8 9 8 12a4 4 0 008 0c0-1.2-.4-2.2-1.1-3.2.1 1.4-.6 2.2-1.4 2.2-1 0-1.2-.9-1-1.8.4-1.6-.2-3.4-1.5-4.2z"/>',
-  hookahs:'<path d="M8 21h8M12 17v4M6 3h12l-1 9a5 5 0 01-10 0L6 3z"/>',
-  coal:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
-  bowls:'<path d="M7 3h10l-1 15a4 4 0 01-8 0L7 3z"/><path d="M7 9h10"/>',
-  accessories:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/>',
-  drinks:'<path d="M8 3h8l-1 4H9L8 3z"/><path d="M9 7l1 13h4l1-13"/><path d="M10 12h4"/>',
-  vape:'<rect x="10" y="2" width="4" height="7" rx="1.5"/><path d="M8 9h8l1 4-1 9H9L8 13z"/><path d="M10 13h4"/>',
+  tobacco:'<path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>',
+  hookahs:'<path d="M9 2h6l1 3H8l1-3z"/><path d="M7 5h10l-1.2 8.5a3.8 3.8 0 01-7.6 0L7 5z"/><path d="M12 13.5V19"/><path d="M8 22h8"/><path d="M15 19c2 0 3.6-1 4.5-2.8"/>',
+  coal:'<path d="M8.5 14.5a2.5 2.5 0 002.5-2.5c0-1.4-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 002.5 2.5z"/>',
+  bowls:'<path d="M5 4h14l-1.6 12.3a5.5 5.5 0 01-10.8 0L5 4z"/><path d="M5.4 6.5h13.2"/>',
+  accessories:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.1-3.1a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.1 3.1z"/>',
+  drinks:'<path d="M10.2 2h3.6l1.4 3H8.8l1.4-3z"/><path d="M5 6h14l-1.4 12.2A2.5 2.5 0 0115.1 20H8.9a2.5 2.5 0 01-2.5-1.8L5 6z"/><path d="M5.6 10h12.8"/>',
+  vape:'<rect x="9" y="2.5" width="6" height="4.5" rx="1"/><path d="M8 8.5h8l1.2 3.5L16 20a2 2 0 01-2 2h-4a2 2 0 01-2-2l-1.2-8L8 8.5z"/><path d="M9.5 13h5"/>',
   new:'<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.5 6.3L12 16.9 6.3 20.1l1.5-6.3-4.8-4.3 6.4-.6L12 3z"/>'
 };
 
@@ -201,16 +203,27 @@ const PROMO_CODES = {
   'SMOKE20': {discount:0.2, label:'-20% на угли', appliesTo:'coal', expiry:'20.09'}
 };
 
+// Магазин работает только на самовывоз: онлайн-оплаты и доставки нет, товар
+// можно отложить через приложение и забрать/оплатить на месте.
+const STORE_INFO = {
+  name: BRAND_NAME,
+  address: 'ул. Тверская, 24, стр. 1',
+  hours: 'Ежедневно, 12:00–23:00',
+  phone: '+7 999 000-00-00',
+  holdHours: 24,
+};
+
+// Статусы брони: reserved (отложен, ждёт в магазине) → done (забран) / cancelled (отменён).
 const ORDERS = [
-  {id:'10482', date:'13 сентября', itemsCount:3, total:1750, status:'transit',
+  {id:'10482', date:'13 сентября', itemsCount:3, total:1750, status:'reserved',
     items:[{productId:'darkside-topgum', qty:1, price:1590}, {productId:'coal-cocobrico-24', qty:2, price:480}],
-    address:'ул. Тверская, 24, кв. 56', eta:'сегодня, 18:00–20:00'},
-  {id:'10365', date:'2 сентября', itemsCount:2, total:1180, status:'delivered',
+    address:STORE_INFO.address, eta:'заберите сегодня до 23:00'},
+  {id:'10365', date:'2 сентября', itemsCount:2, total:1180, status:'done',
     items:[{productId:'bonche-chocolate', qty:1, price:820}, {productId:'acc-tongs', qty:1, price:360}],
-    address:'ул. Тверская, 24, кв. 56', eta:'доставлен 2 сентября'},
+    address:STORE_INFO.address, eta:'забрано 2 сентября'},
   {id:'10201', date:'21 августа', itemsCount:1, total:450, status:'cancelled',
     items:[{productId:'coal-cocobrico-24', qty:1, price:450}],
-    address:'ул. Тверская, 24, кв. 56', eta:'—'},
+    address:STORE_INFO.address, eta:'—'},
 ];
 function getOrder(id){return ORDERS.find(o=>o.id===id);}
 
@@ -229,11 +242,11 @@ const ADDRESSES = [
 const PROFILE_USER = {name:'Ринат М.', phone:'+7 999 123-45-67', email:''};
 
 const NOTIFICATIONS = [
-  {icon:'truck', title:'Ваша посылка в пути', text:'Заказ №1244 уже в городе', time:'10.05', unread:true},
+  {icon:'check', title:'Товар готов к выдаче', text:'Бронь №1244 ждёт вас в магазине', time:'10.05', unread:true},
   {icon:'gift', title:'Скидка 20% на Dark Side', text:'Любимые вкусы по выгодной цене', time:'08.05', unread:true},
   {icon:'wheel', title:'Бонусы начислены', text:'+250 баллов за покупку', time:'05.05', unread:false},
   {icon:'box', title:'Новинки в каталоге', text:'Поступление табаков Tangiers', time:'02.05', unread:false},
-  {icon:'check', title:'Время забрать заказ', text:'Заказ №1242 готов к выдаче', time:'28.04', unread:false},
+  {icon:'check', title:'Время забрать бронь', text:'Заказ №1242 готов к выдаче', time:'28.04', unread:false},
 ];
 
 /* ---------- лояльность ---------- */
@@ -259,7 +272,7 @@ const WHEEL_PRIZES = [
   {label:'+100', type:'bonus', value:100, title:'+100 бонусов', color:'#F52B32'},
   {label:'−10%', type:'promo', code:'WHEEL10', discount:0.10, title:'Промокод −10%', color:'#F1F2F4'},
   {label:'+200', type:'bonus', value:200, title:'+200 бонусов', color:'#F52B32'},
-  {label:'0 ₽', type:'freeDelivery', title:'Бесплатная доставка', color:'#F1F2F4'},
+  {label:'+150', type:'bonus', value:150, title:'+150 бонусов', color:'#F1F2F4'},
   {label:'+50', type:'bonus', value:50, title:'+50 бонусов', color:'#F52B32'},
   {label:'−15%', type:'promo', code:'WHEEL15', discount:0.15, title:'Промокод −15%', color:'#F1F2F4'},
   {label:'↻', type:'again', title:'Попробуйте ещё раз', color:'#F52B32'},

@@ -12,7 +12,6 @@ const STATE = {
   bonusBalance: JSON.parse(localStorage.getItem('ambra_bonus') || '1240'),
   lifetimeSpend: JSON.parse(localStorage.getItem('ambra_spend') || '18000'),
   useBonuses: false,
-  freeDeliveryCredits: JSON.parse(localStorage.getItem('ambra_freeship') || '0'),
   wheelSpinsExtra: JSON.parse(localStorage.getItem('ambra_spins') || '0'),
   wheelLastFreeSpinDate: localStorage.getItem('ambra_lastspin') || null,
   notifReadCount: JSON.parse(localStorage.getItem('ambra_notifread') || '0'),
@@ -23,7 +22,6 @@ function saveState(){
   localStorage.setItem('ambra_promo', JSON.stringify(STATE.promo));
   localStorage.setItem('ambra_bonus', JSON.stringify(STATE.bonusBalance));
   localStorage.setItem('ambra_spend', JSON.stringify(STATE.lifetimeSpend));
-  localStorage.setItem('ambra_freeship', JSON.stringify(STATE.freeDeliveryCredits));
   localStorage.setItem('ambra_spins', JSON.stringify(STATE.wheelSpinsExtra));
   localStorage.setItem('ambra_notifread', JSON.stringify(STATE.notifReadCount));
   if(STATE.wheelLastFreeSpinDate) localStorage.setItem('ambra_lastspin', STATE.wheelLastFreeSpinDate);
@@ -58,8 +56,7 @@ function cartDiscount(){
   const base = p.appliesTo==='all' ? cartSubtotal() : STATE.cart.filter(i=>getProduct(i.productId).category===p.appliesTo).reduce((s,i)=>s+cartLine(i),0);
   return Math.round(base * p.discount);
 }
-function cartDeliveryFee(){ return (cartSubtotal() > 3000 || STATE.freeDeliveryCredits > 0) ? 0 : 300; }
-function cartTotal(){ return Math.max(0, cartSubtotal() - cartDiscount() + cartDeliveryFee()); }
+function cartTotal(){ return Math.max(0, cartSubtotal() - cartDiscount()); }
 function isFav(id){ return STATE.favorites.includes(id); }
 function isTobaccoLike(p){ return p.category==='tobacco' || p.category==='vape'; }
 
@@ -216,6 +213,18 @@ function applyViewportHeight(){
   document.documentElement.style.setProperty('--tg-viewport-height', h + 'px');
 }
 
+// В полноэкранном режиме Telegram рисует СВОИ элементы (крестик закрытия, кнопка
+// меню/ещё) поверх WebView, отдельно от системной чёлки устройства. env(safe-area-inset-*)
+// знает только про чёлку/notch, а не про эти кнопки Telegram — из-за этого дизайн
+// приложения оказывался под ними. contentSafeAreaInset — именно тот отступ, который
+// нужен, чтобы не залезать под них; добавляем его поверх обычного safe-area.
+function applyTelegramContentInset(){
+  if(!tg) return;
+  const csa = tg.contentSafeAreaInset || {top:0, bottom:0};
+  document.documentElement.style.setProperty('--tg-content-safe-top', (csa.top||0) + 'px');
+  document.documentElement.style.setProperty('--tg-content-safe-bottom', (csa.bottom||0) + 'px');
+}
+
 function init(){
   if(tg){
     tg.ready();
@@ -226,9 +235,15 @@ function init(){
       tg.setHeaderColor('#FFFFFF');
       tg.setBackgroundColor('#FFFFFF');
     }catch(e){}
-    if(tg.onEvent){ tg.onEvent('viewportChanged', applyViewportHeight); tg.onEvent('fullscreenChanged', applyViewportHeight); }
+    if(tg.onEvent){
+      tg.onEvent('viewportChanged', applyViewportHeight);
+      tg.onEvent('fullscreenChanged', applyViewportHeight);
+      tg.onEvent('safeAreaChanged', applyTelegramContentInset);
+      tg.onEvent('contentSafeAreaChanged', applyTelegramContentInset);
+    }
   }
   applyViewportHeight();
+  applyTelegramContentInset();
   window.addEventListener('resize', applyViewportHeight);
   window.addEventListener('orientationchange', applyViewportHeight);
 
@@ -323,6 +338,7 @@ function render(){
     case 'personal-data': html = viewPersonalData(); break;
     case 'addresses': html = viewAddresses(); break;
     case 'support': html = viewSupport(); break;
+    case 'pickup-info': html = viewPickupInfo(); break;
     case 'admin-products': html = viewAdminProducts(); break;
     case 'admin-product-edit': html = viewAdminProductEdit(param); break;
     default: html = viewHome(); nav='home';
@@ -333,6 +349,18 @@ function render(){
   updateTgBack(!nav && name!=='order-success');
   window.scrollTo(0,0);
   const cEl = app.querySelector('.content'); if(cEl) cEl.scrollTop = 0;
+  keepActiveChipsVisible(app);
+}
+
+// Полная перерисовка (innerHTML) на каждый клик сбрасывала горизонтальный скролл
+// строк с чипами (категории/бренды) к началу — выбранный чип, прокрученный вправо,
+// "прятался" за первыми кнопками. Возвращаем активный чип в видимую область сразу
+// после перерисовки, без анимации, чтобы это не выглядело как прыжок.
+function keepActiveChipsVisible(app){
+  app.querySelectorAll('.hscroll').forEach(function(row){
+    const active = row.querySelector('.chip.active, .category-item.active');
+    if(active) active.scrollIntoView({inline:'nearest', block:'nearest'});
+  });
 }
 
 function updateTgBack(show){
@@ -346,7 +374,7 @@ function goBack(){
     product:'catalog', checkout:'cart', order:'orders', category:'catalog',
     notifications:'home', promotions:'profile', wheel:'promotions', referral:'promotions',
     about:'profile', orders:'profile', search:'catalog',
-    'personal-data':'profile', addresses:'profile', support:'profile',
+    'personal-data':'profile', addresses:'profile', support:'profile', 'pickup-info':'home',
     'admin-products':'about', 'admin-product-edit':'admin-products',
   };
   navigate('#/'+(map[name]||'home'));
@@ -536,9 +564,9 @@ function viewHome(){
   const bestsellers = [getProduct('darkside-topgum'), getProduct('alpha-hookah-modelx')];
   return headerHome()+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:22px;padding:14px 0 18px;">'+
-    '<button class="list-row" data-nav="profile" style="padding:0 var(--sp-4);border:none;">'+svgIcon(ICONS.mapPin,15,'')+
-      '<span style="flex:1;font-size:12px;color:var(--text-secondary);font-weight:500;">Москва, ул. Ленина, 12</span>'+
-      svgIcon(ICONS.chevronDown,13,'')+
+    '<button class="list-row" data-nav="pickup-info" style="padding:0 var(--sp-4);border:none;">'+svgIcon(ICONS.mapPin,15,'')+
+      '<span style="flex:1;font-size:12px;color:var(--text-secondary);font-weight:500;">Самовывоз: '+STORE_INFO.address+'</span>'+
+      svgIcon(ICONS.chevronRight,13,'')+
     '</button>'+
     '<div class="section" style="padding:0 var(--sp-4);">'+
       '<button class="search-field" data-nav="search" style="width:100%;">'+svgIcon(ICONS.search,16)+
@@ -830,41 +858,31 @@ function viewCart(){
     '<div style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);padding-top:16px;padding-bottom:16px;">'+
       '<div class="summary-row"><span>Товары ('+cartCount()+')</span><span class="val">'+formatPrice(cartSubtotal())+'</span></div>'+
       (promo?'<div class="summary-row"><span>Скидка · '+STATE.promo+'</span><span class="val" style="color:var(--success);">–'+formatPrice(cartDiscount())+'</span></div>':'')+
-      '<div class="summary-row"><span>Доставка</span><span class="val">'+(cartDeliveryFee()===0?'бесплатно':formatPrice(cartDeliveryFee()))+'</span></div>'+
     '</div>'+
   '</div></div>'+
   '<div class="sticky-bar" style="flex-direction:column;align-items:stretch;gap:12px;">'+
     '<div style="display:flex;align-items:baseline;justify-content:space-between;"><span style="font-size:13px;color:var(--text-secondary);font-weight:600;">Итого</span><span class="h2">'+formatPrice(cartTotal())+'</span></div>'+
-    '<button class="btn btn-primary btn-block" data-nav="checkout">Оформить заказ</button>'+
+    '<button class="btn btn-primary btn-block" data-nav="checkout">Отложить товар</button>'+
   '</div>';
 }
 
-/* ================= CHECKOUT ================= */
+/* ================= CHECKOUT (бронь на самовывоз — доставки и онлайн-оплаты нет) ================= */
 
 function viewCheckout(){
   const promo = STATE.promo && PROMO_CODES[STATE.promo];
   const maxRedeem = maxBonusRedeem();
   const bonusDiscount = checkoutBonusDiscount();
-  return headerBack('Оформление заказа')+
+  return headerBack('Отложить товар')+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:20px;padding:16px 20px 0;">'+
     '<div style="display:flex;flex-direction:column;gap:10px;">'+
-      '<div class="eyebrow">Доставка</div>'+
-      '<div class="segmented"><button class="seg active">Курьером</button><button class="seg">Самовывоз</button></div>'+
-      '<div style="display:flex;gap:12px;background:var(--surface);border:1px solid var(--primary);border-radius:var(--radius-card);padding:14px;">'+
+      '<div class="eyebrow">Самовывоз</div>'+
+      '<div style="display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:14px;">'+
         svgIcon(ICONS.mapPin,18,'')+
-        '<div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:13px;color:var(--text);font-weight:600;">ул. Тверская, 24, кв. 56</span><span style="font-size:11px;color:var(--text-tertiary);">Домофон 56К · этаж 4</span></div>'+
-        '<span style="font-size:12px;color:var(--primary);font-weight:600;">Изменить</span>'+
+        '<div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:13px;color:var(--text);font-weight:600;">'+STORE_INFO.address+'</span><span style="font-size:11px;color:var(--text-tertiary);">'+STORE_INFO.hours+'</span></div>'+
       '</div>'+
-    '</div>'+
-    '<div style="display:flex;flex-direction:column;gap:10px;">'+
-      '<div class="eyebrow">Способ оплаты</div>'+
-      '<div style="display:flex;flex-direction:column;gap:8px;">'+
-        '<label class="list-row" style="border:1px solid var(--primary);background:var(--primary-tint);border-radius:var(--radius-card);padding:13px 14px;" data-action="pick-pay" data-i="0"><div class="pin active"></div>'+svgIcon(ICONS.card,18,'')+'<span style="flex:1;font-size:13px;color:var(--text);font-weight:600;">Банковская карта</span><span style="font-size:11px;color:var(--text-tertiary);">•• 4821</span></label>'+
-        '<label class="list-row" style="border:1px solid var(--border);border-radius:var(--radius-card);padding:13px 14px;" data-action="pick-pay" data-i="1"><div class="pin"></div>'+svgIcon(ICONS.cash,18,'')+'<span style="font-size:13px;color:var(--text);font-weight:600;">Наличными курьеру</span></label>'+
-      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-tint);border:1px solid var(--primary);border-radius:var(--radius-card);padding:11px 14px;">'+svgIcon(ICONS.gift,16,'')+'<span style="font-size:12px;color:var(--primary);font-weight:700;flex:1;">Оплата картой или наличными при получении в магазине</span></div>'+
     '</div>'+
     (promo?'<div style="display:flex;align-items:center;gap:10px;background:var(--primary-tint);border:1px solid var(--primary);border-radius:var(--radius-card);padding:11px 14px;">'+svgIcon(ICONS.gift,16,'')+'<span style="font-size:12px;color:var(--primary);font-weight:700;flex:1;">Промокод '+STATE.promo+' применён</span><span style="font-size:11px;color:var(--success);font-weight:700;">–'+formatPrice(cartDiscount())+'</span></div>':'')+
-    (STATE.freeDeliveryCredits>0 && cartSubtotal()<=3000 ? '<div style="display:flex;align-items:center;gap:10px;background:var(--success-tint);border:1px solid var(--success);border-radius:var(--radius-card);padding:11px 14px;">'+svgIcon(ICONS.truck,16,'')+'<span style="font-size:12px;color:var(--success);font-weight:700;flex:1;">Бесплатная доставка — приз колеса фортуны</span></div>' : '')+
     (maxRedeem>0 ? (
       '<label class="list-row" style="border:1px solid '+(STATE.useBonuses?'var(--primary)':'var(--border)')+';border-radius:var(--radius-card);padding:13px 14px;" data-action="toggle-use-bonuses">'+
         '<div class="pin'+(STATE.useBonuses?' active':'')+'"></div>'+
@@ -876,16 +894,16 @@ function viewCheckout(){
       '<div class="summary-row"><span>Товары ('+cartCount()+')</span><span class="val">'+formatPrice(cartSubtotal())+'</span></div>'+
       (promo?'<div class="summary-row"><span>Скидка по промокоду</span><span class="val" style="color:var(--success);">–'+formatPrice(cartDiscount())+'</span></div>':'')+
       (bonusDiscount>0?'<div class="summary-row"><span>Списание бонусов</span><span class="val" style="color:var(--success);">–'+formatPrice(bonusDiscount)+'</span></div>':'')+
-      '<div class="summary-row"><span>Доставка</span><span class="val">'+(cartDeliveryFee()===0?'бесплатно':formatPrice(cartDeliveryFee()))+'</span></div>'+
-      '<div class="summary-row"><span>Кешбэк за заказ · '+currentTier().name+' '+Math.round(currentTier().cashback*100)+'%</span><span class="val" style="color:var(--primary);">+'+Math.round(checkoutTotal()*currentTier().cashback)+'</span></div>'+
+      '<div class="summary-row"><span>Кешбэк после оплаты · '+currentTier().name+' '+Math.round(currentTier().cashback*100)+'%</span><span class="val" style="color:var(--primary);">+'+Math.round(checkoutTotal()*currentTier().cashback)+'</span></div>'+
+      '<div class="summary-row" style="padding-top:6px;border-top:1px solid var(--border);"><span style="font-weight:700;color:var(--text);">К оплате при получении</span><span class="val" style="font-weight:700;">'+formatPrice(checkoutTotal())+'</span></div>'+
     '</div>'+
     '<label class="switch-row" style="cursor:pointer;align-items:flex-start;padding-bottom:16px;" data-action="toggle-legal">'+
-      '<span style="font-size:12px;color:var(--text-secondary);line-height:1.5;padding-right:12px;">Я подтверждаю правильность данных заказа и согласен с условиями покупки.</span>'+
+      '<span style="font-size:12px;color:var(--text-secondary);line-height:1.5;padding-right:12px;">Я согласен(-на) забрать отложенный товар в магазине в течение '+STORE_INFO.holdHours+' часов и оплатить его на месте.</span>'+
       '<span style="width:20px;height:20px;border-radius:6px;border:1.5px solid '+(legalConfirmed?'var(--primary)':'var(--border)')+';background:'+(legalConfirmed?'var(--primary)':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(legalConfirmed?svgIcon(ICONS.check,13):'')+'</span>'+
     '</label>'+
   '</div></div>'+
   '<div class="sticky-bar" style="flex-direction:column;align-items:stretch;gap:12px;">'+
-    '<button class="btn btn-primary btn-block" id="payBtn" data-action="place-order"'+(orderProcessing?' disabled':'')+'>'+(orderProcessing?'Обработка...':'Оплатить · '+formatPrice(checkoutTotal()))+'</button>'+
+    '<button class="btn btn-primary btn-block" id="payBtn" data-action="place-order"'+(orderProcessing?' disabled':'')+'>'+(orderProcessing?'Обработка...':'Отложить товар')+'</button>'+
   '</div>';
 }
 
@@ -896,14 +914,14 @@ function viewOrderSuccess(orderId){
   return '<div class="content" style="display:flex;">'+
     '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:32px;text-align:center;">'+
       '<div style="width:88px;height:88px;border-radius:50%;background:var(--success-tint);display:flex;align-items:center;justify-content:center;color:var(--success);">'+svgIcon(ICONS.check,40,'')+'</div>'+
-      '<div style="display:flex;flex-direction:column;gap:8px;"><div class="h1">Заказ оформлен</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;max-width:260px;">Спасибо! Мы получили ваш заказ.</div></div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px;"><div class="h1">Товар отложен</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;max-width:260px;">Заберите его в магазине — мы вас ждём. Оплата на месте.</div></div>'+
       '<div style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:10px;">'+
-        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Номер заказа</span><span style="color:var(--text);font-weight:700;">Заказ №'+(order?order.id:orderId)+'</span></div>'+
-        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Ожидаемая доставка</span><span style="color:var(--text);font-weight:700;">'+(order?order.eta:'сегодня, 18:00–20:00')+'</span></div>'+
-        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Начислено бонусов</span><span style="color:var(--primary);font-weight:700;">+'+(order?order.cashback:0)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Номер брони</span><span style="color:var(--text);font-weight:700;">№'+(order?order.id:orderId)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Пункт самовывоза</span><span style="color:var(--text);font-weight:700;">'+STORE_INFO.address+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-tertiary);">Заберите</span><span style="color:var(--text);font-weight:700;">'+(order?order.eta:'в течение '+STORE_INFO.holdHours+' часов')+'</span></div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:6px;">'+
-        '<button class="btn btn-primary btn-block" data-nav="order/'+orderId+'">Посмотреть заказ</button>'+
+        '<button class="btn btn-primary btn-block" data-nav="order/'+orderId+'">Посмотреть бронь</button>'+
         '<button class="btn btn-secondary btn-block" data-nav="catalog">Продолжить покупки</button>'+
       '</div>'+
     '</div>'+
@@ -996,13 +1014,29 @@ function viewAddresses(){
   '</div></div>';
 }
 
+function viewPickupInfo(){
+  return headerBack('Самовывоз')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:16px;padding:18px 20px;">'+
+    '<div style="display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;">'+
+      svgIcon(ICONS.mapPin,20,'')+
+      '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">'+
+        '<span style="font-size:15px;font-weight:700;color:var(--text);">'+STORE_INFO.name+'</span>'+
+        '<span style="font-size:13px;color:var(--text);">'+STORE_INFO.address+'</span>'+
+        '<span style="font-size:12px;color:var(--text-tertiary);">'+STORE_INFO.hours+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Магазин работает только на самовывоз — доставки и онлайн-оплаты нет. Отложите товар через приложение и заберите его в течение '+STORE_INFO.holdHours+' часов, оплата картой или наличными на месте.</div>'+
+    '<a href="tel:'+STORE_INFO.phone.replace(/\s/g,'')+'" class="btn btn-secondary btn-block" style="text-decoration:none;">'+svgIcon(ICONS.support,16)+' Позвонить в магазин</a>'+
+  '</div></div>';
+}
+
 function viewSupport(){
   return headerBack('Поддержка')+
   '<div class="content"><div style="display:flex;flex-direction:column;">'+
     profileRow('support','Написать в поддержку','','contact-support')+
     profileRow('info','Частые вопросы','','faq')+
-    profileRow('truck','Доставка','','faq')+
-    profileRow('card','Оплата','','faq')+
+    profileRow('mapPin','Самовывоз и адрес магазина','','faq')+
+    profileRow('card','Оплата на месте','','faq')+
     profileRow('box','Возврат','','faq')+
   '</div></div>';
 }
@@ -1133,7 +1167,7 @@ function viewAdminProductEdit(id){
 /* ================= ORDERS ================= */
 
 function orderStatusLabel(s){
-  return s==='transit' ? '<span style="color:var(--primary);">В пути</span>' : s==='delivered' ? '<span style="color:var(--success);">Доставлен</span>' : '<span style="color:var(--text-tertiary);">Отменён</span>';
+  return s==='reserved' ? '<span style="color:var(--primary);">Отложен</span>' : s==='done' ? '<span style="color:var(--success);">Забран</span>' : '<span style="color:var(--text-tertiary);">Отменён</span>';
 }
 
 function viewOrders(){
@@ -1146,12 +1180,11 @@ function viewOrders(){
       '<button class="btn btn-primary" data-nav="catalog" style="margin-top:6px;">Начать покупки</button>'+
     '</div></div>';
   }
-  const tabs = [['all','Все'],['processing','В обработке'],['delivering','Доставляются'],['completed','Завершены']];
+  const tabs = [['all','Все'],['delivering','Отложены'],['completed','Забраны']];
   function inTab(o){
     if(ordersTab==='all') return true;
-    if(ordersTab==='delivering') return o.status==='transit';
-    if(ordersTab==='completed') return o.status==='delivered';
-    if(ordersTab==='processing') return o.status!=='transit' && o.status!=='delivered' && o.status!=='cancelled';
+    if(ordersTab==='delivering') return o.status==='reserved';
+    if(ordersTab==='completed') return o.status==='done';
     return true;
   }
   const filtered = ORDERS.filter(inTab);
@@ -1177,9 +1210,9 @@ function viewOrders(){
 function viewOrderDetail(id){
   const o = getOrder(id);
   if(!o) return headerBack('Заказ')+'<div class="content"><div class="empty-state"><div class="empty-title">Заказ не найден</div></div></div>';
-  const steps = ['Принят','Готовится','В пути','Доставлен'];
-  const stepIndex = o.status==='delivered'?3 : o.status==='transit'?2 : o.status==='cancelled'?0 : 1;
-  return headerBack('Заказ № '+o.id)+
+  const steps = ['Принята','Готова к выдаче','Забрана'];
+  const stepIndex = o.status==='done'?2 : o.status==='reserved'?1 : 0;
+  return headerBack('Бронь № '+o.id)+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:20px;padding:18px 20px;">'+
     '<div style="display:flex;align-items:center;">'+
       steps.map(function(s,i){return (
@@ -1194,7 +1227,7 @@ function viewOrderDetail(id){
       '<div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:13px;color:var(--text);font-weight:600;">'+o.address+'</span><span style="font-size:11px;color:var(--text-tertiary);">'+o.eta+'</span></div>'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;">'+
-      '<div class="eyebrow">Состав заказа</div>'+
+      '<div class="eyebrow">Состав брони</div>'+
       o.items.map(function(it){ const p=getProduct(it.productId); if(!p) return ''; return '<div style="display:flex;gap:12px;">'+
         '<div class="thumb-photo" style="width:52px;height:52px;">'+productPhotoHtml(p)+'</div>'+
         '<div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;color:var(--text);font-weight:600;">'+p.brand+' '+p.name+'</span><span style="font-size:11px;color:var(--text-tertiary);">× '+it.qty+'</span></div>'+
@@ -1311,7 +1344,7 @@ function wheelResultSheetHtml(){
   if(!wheelResultPrize) return '';
   const p = wheelResultPrize;
   const isAgain = p.type==='again';
-  const isAuto = p.type==='bonus' || p.type==='freeDelivery';
+  const isAuto = p.type==='bonus';
   return '<div class="sheet-overlay open" data-action="sheet-backdrop">'+
     '<div class="sheet" style="max-height:none;">'+
       '<div class="sheet-handle"><span></span></div>'+
@@ -1323,7 +1356,6 @@ function wheelResultSheetHtml(){
           '<div class="eyebrow" style="color:var(--primary);">Поздравляем!</div>'+
           '<div style="font-size:28px;line-height:1.2;font-weight:800;color:var(--primary);">'+p.title+'</div>'+
           (p.type==='promo' ? promoCodeRow(p.code) : '')+
-          (p.type==='freeDelivery' ? '<div style="font-size:13px;color:var(--text-secondary);">Спишется автоматически на следующем заказе</div>' : '')+
           (p.type==='bonus' ? '<div style="font-size:13px;color:var(--text-secondary);">Уже зачислено на ваш баланс</div>' : '')
         ))+
       '</div>'+
@@ -1636,16 +1668,6 @@ function onGlobalClick(e){
       break;
     }
 
-    case 'pick-pay': {
-      document.querySelectorAll('[data-action="pick-pay"]').forEach(el=>{
-        el.style.borderColor = 'var(--border)'; el.style.background='transparent';
-        el.querySelector('.pin').classList.remove('active');
-      });
-      actEl.style.borderColor = 'var(--primary)'; actEl.style.background='var(--primary-tint)';
-      actEl.querySelector('.pin').classList.add('active');
-      break;
-    }
-
     case 'toggle-use-bonuses': { STATE.useBonuses = !STATE.useBonuses; render(); break; }
     case 'toggle-legal': { legalConfirmed = !legalConfirmed; render(); break; }
     case 'toggle-instock': { currentFilters.inStockOnly = !currentFilters.inStockOnly; render(); break; }
@@ -1670,24 +1692,22 @@ function onGlobalClick(e){
     case 'place-order': {
       if(orderProcessing) return;
       if(STATE.cart.length===0){ toast('Корзина пуста', 'err'); return; }
-      if(!legalConfirmed){ haptic('error'); toast('Подтвердите согласие с условиями покупки', 'err'); return; }
+      if(!legalConfirmed){ haptic('error'); toast('Подтвердите согласие забрать товар', 'err'); return; }
       orderProcessing = true; render();
       setTimeout(function(){
         const paidTotal = checkoutTotal();
         const bonusSpent = checkoutBonusDiscount();
-        const usedFreeShipCredit = STATE.freeDeliveryCredits > 0 && cartSubtotal() <= 3000;
         const cashback = Math.round(paidTotal * currentTier().cashback);
         const newId = String(10000 + Math.floor(Math.random()*899));
         const order = {
-          id:newId, date:'сегодня', itemsCount:cartCount(), total:paidTotal, status:'transit', cashback:cashback,
+          id:newId, date:'сегодня', itemsCount:cartCount(), total:paidTotal, status:'reserved', cashback:cashback,
           items: STATE.cart.map(i=>({productId:i.productId, qty:i.qty, price:getProduct(i.productId).price})),
-          address:'ул. Тверская, 24, кв. 56', eta:'сегодня, 18:00–20:00'
+          address:STORE_INFO.address, eta:'заберите в течение '+STORE_INFO.holdHours+' часов'
         };
         ORDERS.unshift(order);
         STATE.bonusBalance = STATE.bonusBalance - bonusSpent + cashback;
         STATE.lifetimeSpend += paidTotal;
         STATE.wheelSpinsExtra += 1;
-        if(usedFreeShipCredit) STATE.freeDeliveryCredits -= 1;
         STATE.cart = []; STATE.promo = null; STATE.useBonuses = false;
         saveState();
         orderProcessing = false;
