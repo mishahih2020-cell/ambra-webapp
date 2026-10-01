@@ -365,8 +365,8 @@ function render(){
     case 'addresses': html = viewAddresses(); break;
     case 'support': html = viewSupport(); break;
     case 'pickup-info': html = viewPickupInfo(); break;
-    case 'admin-products': html = viewAdminProducts(); break;
-    case 'admin-product-edit': html = viewAdminProductEdit(param); break;
+    case 'admin-products': html = adminUnlocked ? viewAdminProducts() : viewAdminPinGate(); break;
+    case 'admin-product-edit': html = adminUnlocked ? viewAdminProductEdit(param) : viewAdminPinGate(); break;
     default: html = viewHome(); nav='home';
   }
 
@@ -1095,6 +1095,47 @@ function viewAbout(){
 const BADGE_LABELS = {'':'Без бейджа', sale:'Скидка', new:'Новинка', hit:'Хит'};
 let adminDraft = null; // {category, badge, inStock, image} — поля, требующие перерисовки при выборе
 
+// ---------- лёгкая PIN-защита входа в управление товарами ----------
+// Не настоящая авторизация (PIN лежит в localStorage этого же браузера) —
+// просто барьер от случайного/любопытного доступа, раз экран открыт всем
+// без сервера и логина. adminUnlocked сбрасывается при перезагрузке страницы
+// (нужно вводить PIN заново при каждом новом запуске приложения).
+let adminUnlocked = false;
+function getAdminPin(){ return localStorage.getItem('hks_admin_pin') || null; }
+function setAdminPin(pin){ localStorage.setItem('hks_admin_pin', pin); }
+
+function viewAdminPinGate(){
+  const hasPin = !!getAdminPin();
+  if(hasPin){
+    return headerBack('Вход в управление')+
+    '<div class="content"><div style="display:flex;flex-direction:column;gap:14px;padding:48px 24px;align-items:center;text-align:center;">'+
+      '<div class="empty-icon">'+svgIcon(ICONS.settings,28)+'</div>'+
+      '<div class="h2">Введите PIN</div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);max-width:260px;">Доступ к управлению товарами защищён PIN-кодом этого устройства.</div>'+
+      '<input id="adminPinInput" class="input" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="max-width:200px;text-align:center;letter-spacing:6px;font-size:18px;margin-top:8px;">'+
+      '<button class="btn btn-primary btn-block" style="max-width:200px;" data-action="admin-pin-unlock">Войти</button>'+
+      '<button class="section-link" data-action="admin-pin-forgot">Забыли PIN?</button>'+
+    '</div></div>';
+  }
+  return headerBack('Защита управления товарами')+
+  '<div class="content"><div style="display:flex;flex-direction:column;gap:16px;padding:32px 24px;">'+
+    '<div style="text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;">'+
+      '<div class="empty-icon">'+svgIcon(ICONS.settings,28)+'</div>'+
+      '<div class="h2">Задайте PIN-код</div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);max-width:280px;">Он будет нужен для входа в управление товарами на этом устройстве — чтобы случайный посетитель не мог менять каталог.</div>'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Новый PIN (минимум 4 символа)</label>'+
+      '<input id="adminPinNew" class="input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••">'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;">'+
+      '<label style="font-size:12px;color:var(--text-tertiary);font-weight:600;">Повторите PIN</label>'+
+      '<input id="adminPinConfirm" class="input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••">'+
+    '</div>'+
+    '<button class="btn btn-primary btn-block" data-action="admin-pin-setup">Сохранить и войти</button>'+
+  '</div></div>';
+}
+
 function viewAdminProducts(){
   return headerBack('Товары', '<button class="icon-btn" data-nav="admin-product-edit/new">'+svgIcon(ICONS.plus,20)+'</button>')+
   '<div class="content"><div style="display:flex;flex-direction:column;">'+
@@ -1109,7 +1150,12 @@ function viewAdminProducts(){
         '<button class="icon-btn" data-action="admin-delete-product" data-id="'+p.id+'" style="color:var(--text-tertiary);">'+svgIcon(ICONS.close,17)+'</button>'+
       '</div>'
     );}).join('')+
-    '<button class="btn btn-secondary btn-block" style="margin:20px;" data-action="admin-reset-products">Сбросить к заводским настройкам</button>'+
+    '<div style="display:flex;flex-direction:column;gap:10px;margin:20px;">'+
+      '<button class="btn btn-secondary btn-block" data-action="admin-export-products">Экспортировать изменения</button>'+
+      '<div style="font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-4px;">Скопирует все товары в буфер обмена — отправьте этот текст разработчику, чтобы сделать правки общими для всех</div>'+
+      '<button class="btn btn-secondary btn-block" data-action="admin-reset-products">Сбросить к заводским настройкам</button>'+
+      '<button class="btn btn-ghost btn-block" data-action="admin-change-pin">Сменить PIN</button>'+
+    '</div>'+
   '</div></div>';
 }
 
@@ -1650,6 +1696,41 @@ function onGlobalClick(e){
       openConfirm('Сбросить все товары?', 'Все ваши изменения товаров будут удалены, вернутся заводские данные.', 'Сбросить', 'admin-reset-products', null);
       break;
     }
+    case 'admin-export-products': {
+      const json = JSON.stringify(PRODUCTS, null, 2);
+      if(navigator.clipboard) navigator.clipboard.writeText(json).then(function(){
+        toast('Скопировано — вставьте текст в чат'); haptic('success');
+      }).catch(function(){
+        toast('Не удалось скопировать, см. консоль', 'err');
+        console.log(json);
+      });
+      else { console.log(json); toast('См. консоль браузера'); }
+      break;
+    }
+
+    case 'admin-pin-unlock': {
+      const el = document.getElementById('adminPinInput');
+      const val = el ? el.value : '';
+      if(val && val === getAdminPin()){ adminUnlocked = true; haptic('success'); render(); }
+      else { haptic('error'); toast('Неверный PIN', 'err'); }
+      break;
+    }
+    case 'admin-pin-setup': {
+      const a = (document.getElementById('adminPinNew')||{}).value || '';
+      const b = (document.getElementById('adminPinConfirm')||{}).value || '';
+      if(a.length<4){ haptic('error'); toast('PIN должен быть не короче 4 символов', 'err'); return; }
+      if(a!==b){ haptic('error'); toast('PIN-коды не совпадают', 'err'); return; }
+      setAdminPin(a); adminUnlocked = true; haptic('success'); toast('PIN сохранён'); render();
+      break;
+    }
+    case 'admin-pin-forgot': {
+      openConfirm('Сбросить PIN?', 'Текущий PIN будет удалён — сразу после этого нужно будет задать новый.', 'Сбросить', 'admin-pin-forgot', null);
+      break;
+    }
+    case 'admin-change-pin': {
+      openConfirm('Сменить PIN?', 'Текущий PIN будет удалён — сразу после этого нужно будет задать новый.', 'Сменить', 'admin-pin-forgot', null);
+      break;
+    }
     case 'pick-favorites-tab': { favoritesTab = actEl.getAttribute('data-tab'); render(); break; }
 
     case 'cart-inc': { const it = STATE.cart.find(i=>i.key===actEl.getAttribute('data-key')); if(it) it.qty++; saveState(); render(); break; }
@@ -1679,6 +1760,7 @@ function onGlobalClick(e){
           if(parseHash().name==='admin-product-edit') navigate('#/admin-products');
         }
         else if(c.action==='admin-reset-products'){ resetProductOverrides(); haptic(); toast('Товары сброшены к заводским'); }
+        else if(c.action==='admin-pin-forgot'){ localStorage.removeItem('hks_admin_pin'); adminUnlocked = false; haptic(); toast('PIN сброшен — задайте новый'); }
       }
       confirmSheet = null; render();
       break;
