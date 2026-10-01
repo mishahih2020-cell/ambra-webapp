@@ -58,29 +58,35 @@ const CATEGORY_ICON_PATH = {
   new:'<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.5 6.3L12 16.9 6.3 20.1l1.5-6.3-4.8-4.3 6.4-.6L12 3z"/>'
 };
 
+// Версия ассетов — приходит из index.html (window.ASSET_V), бампается там при каждом
+// деплое, меняющем фото. Приклеена ко всем путям картинок ниже, чтобы Telegram WebView
+// и браузерный кэш не держали старые файлы под тем же URL.
+const ASSET_V = (typeof window !== 'undefined' && window.ASSET_V) || String(Date.now());
+function assetUrl(path){ return path + '?v=' + ASSET_V; }
+
 // Реальные фото табаков (собственная съёмка упаковки) — лежат в img/tobacco/.
 const TPHOTO = {
-  blackburn: 'img/tobacco/blackburn-mandarin-soda.jpg',
-  overdose: 'img/tobacco/overdose-coffee.jpg',
-  darkside: 'img/tobacco/darkside-top-gum.jpg',
-  musthave: 'img/tobacco/musthave-marula.jpg',
-  bonche: 'img/tobacco/bonche-dark-chocolate.jpg',
+  blackburn: assetUrl('img/tobacco/blackburn-mandarin-soda.jpg'),
+  overdose: assetUrl('img/tobacco/overdose-coffee.jpg'),
+  darkside: assetUrl('img/tobacco/darkside-top-gum.jpg'),
+  musthave: assetUrl('img/tobacco/musthave-marula.jpg'),
+  bonche: assetUrl('img/tobacco/bonche-dark-chocolate.jpg'),
 };
 // Реальные фото остальных категорий — лежат в img/<категория>/.
 const RPHOTO = {
-  alphaHookah: 'img/hookahs/alpha-hookah-modelx.jpg',
-  hoobSirius: 'img/hookahs/hoob-sirius.jpg',
-  bowlPhunnel: 'img/bowls/bowl-phunnel.jpg',
-  bowlAlpha: 'img/bowls/bowl-alpha-kama.jpg',
-  coal: 'img/coal/cocoloco.jpg',
-  tongs: 'img/accessories/tongs-mista.jpg',
-  mouthpiece: 'img/accessories/mouthpiece-silicone.jpg',
-  shaft: 'img/accessories/shaft.jpg',
-  foil: 'img/accessories/foil.jpg',
-  cola: 'img/drinks/cola.jpg',
-  mors: 'img/drinks/mors.jpg',
-  vapeMango: 'img/vape/mango-ice.jpg',
-  vapeCola: 'img/vape/cola-lime.jpg',
+  alphaHookah: assetUrl('img/hookahs/alpha-hookah-modelx.jpg'),
+  hoobSirius: assetUrl('img/hookahs/hoob-sirius.jpg'),
+  bowlPhunnel: assetUrl('img/bowls/bowl-phunnel.jpg'),
+  bowlAlpha: assetUrl('img/bowls/bowl-alpha-kama.jpg'),
+  coal: assetUrl('img/coal/cocoloco.jpg'),
+  tongs: assetUrl('img/accessories/tongs-mista.jpg'),
+  mouthpiece: assetUrl('img/accessories/mouthpiece-silicone.jpg'),
+  shaft: assetUrl('img/accessories/shaft.jpg'),
+  foil: assetUrl('img/accessories/foil.jpg'),
+  cola: assetUrl('img/drinks/cola.jpg'),
+  mors: assetUrl('img/drinks/mors.jpg'),
+  vapeMango: assetUrl('img/vape/mango-ice.jpg'),
+  vapeCola: assetUrl('img/vape/cola-lime.jpg'),
 };
 
 const PRODUCTS = [
