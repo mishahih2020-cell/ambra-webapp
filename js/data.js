@@ -1,6 +1,6 @@
 // Мок-данные каталога. В боевом варианте заменяются на запросы к API магазина.
 
-const BRAND_NAME = 'HOOKAH SHOP';
+const BRAND_NAME = 'Gорчит Shop';
 
 const ICONS = {
   home: '<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 001 1h10a1 1 0 001-1v-9"/><path d="M10 20v-6h4v6"/>',

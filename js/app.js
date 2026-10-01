@@ -1,4 +1,4 @@
-// ===== HOOKAH SHOP webapp — vanilla JS SPA, hash-router, no build step =====
+// ===== Gорчит Shop webapp — vanilla JS SPA, hash-router, no build step =====
 
 const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
 
@@ -78,7 +78,7 @@ function checkoutTotal(){ return Math.max(0, cartTotal() - checkoutBonusDiscount
 function getReferralCode(){
   let code = localStorage.getItem('ambra_refcode');
   if(!code){
-    code = 'HKS-' + Math.random().toString(36).slice(2,8).toUpperCase();
+    code = 'GOR-' + Math.random().toString(36).slice(2,8).toUpperCase();
     localStorage.setItem('ambra_refcode', code);
   }
   return code;
@@ -89,7 +89,7 @@ function getReferralLink(){ return location.origin + location.pathname.replace(/
 function seededRandom(seed){ let s = seed % 2147483647; if(s<=0) s += 2147483646; return function(){ s = (s*16807) % 2147483647; return (s-1)/2147483646; }; }
 function qrPlaceholderSvg(seedText){
   const n = 21, cell = 8, size = n*cell;
-  const seed = (seedText||'HKS').split('').reduce((a,c)=>a+c.charCodeAt(0)*7,1);
+  const seed = (seedText||'GOR').split('').reduce((a,c)=>a+c.charCodeAt(0)*7,1);
   const rand = seededRandom(seed);
   function isFinderZone(r,c){ return (r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7); }
   function finder(r0,c0){
@@ -301,7 +301,7 @@ function photoImg(url, alt){
 function headerHome(){
   const unread = NOTIFICATIONS.filter(n=>n.unread).length;
   return '<div class="tg-header">'+
-    '<div class="brand"><div class="brand-mark">H</div><div style="display:flex;flex-direction:column;"><span class="brand-name">'+BRAND_NAME+'</span><span class="brand-sub">ТАБАК · КАЛЬЯНЫ · АКСЕССУАРЫ</span></div></div>'+
+    '<div class="brand"><div class="brand-mark">G</div><div style="display:flex;flex-direction:column;"><span class="brand-name">'+BRAND_NAME+'</span><span class="brand-sub">ТАБАК · КАЛЬЯНЫ · АКСЕССУАРЫ</span></div></div>'+
     '<div style="display:flex;align-items:center;gap:2px;">'+
       '<button class="icon-btn" data-nav="search">'+svgIcon(ICONS.search,19)+'</button>'+
       '<button class="icon-btn" data-nav="notifications">'+svgIcon(ICONS.bell,19)+(unread>0?'<span class="nav-badge" style="top:4px;right:4px;">'+unread+'</span>':'')+'</button>'+
@@ -411,7 +411,7 @@ function goBack(){
 function viewOnboarding(){
   return '<div style="flex:1;display:flex;flex-direction:column;">'+
     '<div style="flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#1D1416 0%,#3A1113 60%,#F52B32 140%);">'+
-      '<div style="width:64px;height:64px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><span style="font-size:26px;font-weight:800;color:var(--primary);">H</span></div>'+
+      '<div style="width:64px;height:64px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><span style="font-size:26px;font-weight:800;color:var(--primary);">G</span></div>'+
       '<div style="font-size:26px;font-weight:800;letter-spacing:1px;color:#fff;">'+BRAND_NAME+'</div>'+
       '<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-top:8px;font-weight:600;">Табак и кальянная культура</div>'+
     '</div>'+
@@ -1075,7 +1075,7 @@ function viewAbout(){
   return headerBack('Настройки')+
   '<div class="content"><div style="display:flex;flex-direction:column;gap:18px;padding:20px 0;">'+
     '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0 4px;">'+
-      '<div style="width:56px;height:56px;border-radius:14px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;">H</div>'+
+      '<div style="width:56px;height:56px;border-radius:14px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;">G</div>'+
       '<div class="h2">'+BRAND_NAME+'</div>'+
       '<div style="font-size:12px;color:var(--text-tertiary);">Версия 1.0.0</div>'+
     '</div>'+
