@@ -58,18 +58,6 @@ const CATEGORY_ICON_PATH = {
   new:'<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.5 6.3L12 16.9 6.3 20.1l1.5-6.3-4.8-4.3 6.4-.6L12 3z"/>'
 };
 
-// Фото — открытые файлы Wikimedia Commons (свободные лицензии), отдаются через Special:FilePath.
-// Используются как наглядные категорийные фотографии, а не как студийная съёмка конкретного SKU.
-const IMG = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
-const PHOTO = {
-  coal: IMG+'Charcoal_briquettes_Namibia.jpg?width=500',
-  hookah: IMG+'Hookah_2.jpg?width=500',
-  tongs: IMG+'Tongs1.JPG?width=500',
-  foil: IMG+'Aluminium_foil_closeup.jpg?width=500',
-  bowl: IMG+'Hookah_0890.jpg?width=500',
-  vape1: IMG+'Vape_juice.jpg?width=500',
-  vape2: IMG+'CBD_Vape_Oil_E-Liquid_Bottles.jpg?width=500',
-};
 // Реальные фото табаков (собственная съёмка упаковки) — лежат в img/tobacco/.
 const TPHOTO = {
   blackburn: 'img/tobacco/blackburn-mandarin-soda.jpg',
@@ -77,6 +65,22 @@ const TPHOTO = {
   darkside: 'img/tobacco/darkside-top-gum.jpg',
   musthave: 'img/tobacco/musthave-marula.jpg',
   bonche: 'img/tobacco/bonche-dark-chocolate.jpg',
+};
+// Реальные фото остальных категорий — лежат в img/<категория>/.
+const RPHOTO = {
+  alphaHookah: 'img/hookahs/alpha-hookah-modelx.jpg',
+  hoobSirius: 'img/hookahs/hoob-sirius.jpg',
+  bowlPhunnel: 'img/bowls/bowl-phunnel.jpg',
+  bowlAlpha: 'img/bowls/bowl-alpha-kama.jpg',
+  coal: 'img/coal/cocoloco.jpg',
+  tongs: 'img/accessories/tongs-mista.jpg',
+  mouthpiece: 'img/accessories/mouthpiece-silicone.jpg',
+  shaft: 'img/accessories/shaft.jpg',
+  foil: 'img/accessories/foil.jpg',
+  cola: 'img/drinks/cola.jpg',
+  mors: 'img/drinks/mors.jpg',
+  vapeMango: 'img/vape/mango-ice.jpg',
+  vapeCola: 'img/vape/cola-lime.jpg',
 };
 
 const PRODUCTS = [
@@ -109,51 +113,51 @@ const PRODUCTS = [
     flavors:['#4A3A20','#241D15'], strengths:['Средний','Крепкий'], strengthDefault:1, volumes:['25г','100г','250г'], volumeIndex:1,
     description:'Тёмный шоколад — глубокий, слегка горьковатый вкус какао без лишней приторности.'},
 
-  {id:'alpha-hookah-modelx', category:'hookahs', brand:'Alpha Hookah', name:'Model X', volumeDefault:'', price:12990, badge:null, rating:4.8, reviews:63, image:PHOTO.hookah, inStock:true, country:'Россия',
+  {id:'alpha-hookah-modelx', category:'hookahs', brand:'Alpha Hookah', name:'Model X', volumeDefault:'', price:12990, badge:null, rating:4.8, reviews:63, image:RPHOTO.alphaHookah, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Флагманская модель для домашних и лаунж-сессий. Устойчивая база, тройная система очистки дыма.'},
-  {id:'hoob-sirius', category:'hookahs', brand:'HOOB', name:'Sirius', volumeDefault:'', price:9990, badge:'new', rating:4.6, reviews:29, image:PHOTO.hookah, inStock:true, country:'Россия',
+  {id:'hoob-sirius', category:'hookahs', brand:'HOOB', name:'Sirius', volumeDefault:'', price:9990, badge:'new', rating:4.6, reviews:29, image:RPHOTO.hoobSirius, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Компактный кальян с керамической чашей в комплекте. Лёгкая протяжка, стабильный жар.'},
 
-  {id:'bowl-phunnel', category:'bowls', brand:BRAND_NAME, name:'Чаша Phunnel M', volumeDefault:'', price:990, badge:null, rating:4.8, reviews:44, image:PHOTO.bowl, inStock:true, country:'Россия',
+  {id:'bowl-phunnel', category:'bowls', brand:BRAND_NAME, name:'Чаша Phunnel M', volumeDefault:'', price:990, badge:null, rating:4.8, reviews:44, image:RPHOTO.bowlPhunnel, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['M','L'], volumeIndex:0,
     description:'Керамическая чаша фаннел для плотного дыма и равномерного прогрева табака.'},
-  {id:'bowl-alpha', category:'bowls', brand:'Alpha Hookah', name:'Чаша Kama', volumeDefault:'', price:1290, badge:'new', rating:4.7, reviews:21, image:PHOTO.bowl, inStock:true, country:'Россия',
+  {id:'bowl-alpha', category:'bowls', brand:'Alpha Hookah', name:'Чаша Kama', volumeDefault:'', price:1290, badge:'new', rating:4.7, reviews:21, image:RPHOTO.bowlAlpha, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['M'], volumeIndex:0,
     description:'Глиняная чаша с толстыми стенками — держит жар дольше, подходит для крепких смесей.'},
 
-  {id:'coal-cocobrico-24', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'hit', rating:4.9, reviews:301, image:PHOTO.coal, inStock:true, country:'Индонезия',
+  {id:'coal-cocobrico-24', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 24мм', volumeDefault:'1 кг', price:450, badge:'hit', rating:4.9, reviews:301, image:RPHOTO.coal, inStock:true, country:'Индонезия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['0.5 кг','1 кг','3 кг'], volumeIndex:1,
     description:'Быстрое розжигание, долгое горение без запаха и лишнего пепла. 72 кубика на упаковку.'},
-  {id:'coal-cocobrico-26', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 26мм', volumeDefault:'1 кг', price:480, badge:null, rating:4.8, reviews:118, image:PHOTO.coal, inStock:true, country:'Индонезия',
+  {id:'coal-cocobrico-26', category:'coal', brand:'Cocobrico', name:'Кокосовый уголь 26мм', volumeDefault:'1 кг', price:480, badge:null, rating:4.8, reviews:118, image:RPHOTO.coal, inStock:true, country:'Индонезия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['1 кг','3 кг'], volumeIndex:0,
     description:'Крупный кубик для долгих сессий, ровный жар без перепадов температуры.'},
 
-  {id:'acc-tongs', category:'accessories', brand:'SVERDLOVSK Wings', name:'Щипцы для углей «Радуга»', volumeDefault:'', price:350, badge:'hit', rating:4.7, reviews:23, image:PHOTO.tongs, inStock:true, country:'Россия',
+  {id:'acc-tongs', category:'accessories', brand:'SVERDLOVSK Wings', name:'Щипцы для углей «Радуга»', volumeDefault:'', price:350, badge:'hit', rating:4.7, reviews:23, image:RPHOTO.tongs, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Нержавеющая сталь, удобный хват, подходит для любых углей.'},
-  {id:'acc-mouthpiece', category:'accessories', brand:BRAND_NAME, name:'Мундштук силиконовый', volumeDefault:'', price:450, badge:null, rating:4.6, reviews:38, image:null, inStock:true, country:'Россия',
+  {id:'acc-mouthpiece', category:'accessories', brand:BRAND_NAME, name:'Мундштук силиконовый', volumeDefault:'', price:450, badge:null, rating:4.6, reviews:38, image:RPHOTO.mouthpiece, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Многоразовый силиконовый мундштук, легко моется, плотно садится на шланг.'},
-  {id:'acc-shaft', category:'accessories', brand:BRAND_NAME, name:'Шахта для кальяна (запасная)', volumeDefault:'', price:3500, badge:null, rating:4.8, reviews:12, image:PHOTO.hookah, inStock:false, country:'Россия',
+  {id:'acc-shaft', category:'accessories', brand:BRAND_NAME, name:'Шахта для кальяна (запасная)', volumeDefault:'', price:3500, badge:null, rating:4.8, reviews:12, image:RPHOTO.shaft, inStock:false, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['Стандарт'], volumeIndex:0,
     description:'Запасная шахта из нержавеющей стали, совместима с большинством современных кальянов.'},
-  {id:'acc-foil', category:'accessories', brand:BRAND_NAME, name:'Фольга для чаши', volumeDefault:'10 м', price:290, badge:null, rating:4.5, reviews:19, image:PHOTO.foil, inStock:true, country:'Россия',
+  {id:'acc-foil', category:'accessories', brand:BRAND_NAME, name:'Фольга для чаши', volumeDefault:'10 м', price:290, badge:null, rating:4.5, reviews:19, image:RPHOTO.foil, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['10 м'], volumeIndex:0,
     description:'Плотная пищевая фольга для розжига на чаше. Держит жар равномерно, не рвётся при проколе.'},
 
-  {id:'drink-cola', category:'drinks', brand:BRAND_NAME, name:'Кола, стекло', volumeDefault:'0.33 л', price:190, badge:null, rating:4.7, reviews:52, image:null, inStock:true, country:'Россия',
+  {id:'drink-cola', category:'drinks', brand:BRAND_NAME, name:'Кола, стекло', volumeDefault:'0.33 л', price:190, badge:null, rating:4.7, reviews:52, image:RPHOTO.cola, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['0.33 л'], volumeIndex:0,
     description:'Классический освежающий напиток к кальяну. Подаётся охлаждённым.'},
-  {id:'drink-mors', category:'drinks', brand:BRAND_NAME, name:'Морс ягодный', volumeDefault:'0.3 л', price:120, badge:'new', rating:4.8, reviews:27, image:null, inStock:true, country:'Россия',
+  {id:'drink-mors', category:'drinks', brand:BRAND_NAME, name:'Морс ягодный', volumeDefault:'0.3 л', price:120, badge:'new', rating:4.8, reviews:27, image:RPHOTO.mors, inStock:true, country:'Россия',
     flavors:[], strengths:[], strengthDefault:0, volumes:['0.3 л'], volumeIndex:0,
     description:'Домашний ягодный морс без сахара — освежает и подчёркивает вкус табака.'},
 
-  {id:'vape-mango', category:'vape', brand:BRAND_NAME+' Liquids', name:'Манго-лёд', volumeDefault:'30мл', price:590, badge:'hit', rating:4.8, reviews:142, image:PHOTO.vape1, inStock:true, country:'Россия',
+  {id:'vape-mango', category:'vape', brand:BRAND_NAME+' Liquids', name:'Манго-лёд', volumeDefault:'30мл', price:590, badge:'hit', rating:4.8, reviews:142, image:RPHOTO.vapeMango, inStock:true, country:'Россия',
     flavors:['#D9A441','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:1, volumes:['30мл','60мл'], volumeIndex:0,
     description:'Сочный манго с прохладным холодком на выдохe. Плотный пар, насыщенный вкус в каждой затяжке.'},
-  {id:'vape-cola', category:'vape', brand:BRAND_NAME+' Liquids', name:'Кола-лайм', volumeDefault:'30мл', price:590, badge:'new', rating:4.6, reviews:64, image:PHOTO.vape2, inStock:true, country:'Россия',
+  {id:'vape-cola', category:'vape', brand:BRAND_NAME+' Liquids', name:'Кола-лайм', volumeDefault:'30мл', price:590, badge:'new', rating:4.6, reviews:64, image:RPHOTO.vapeCola, inStock:true, country:'Россия',
     flavors:['#B8703F','#8AA06B'], strengths:['0мг','3мг','6мг'], strengthDefault:0, volumes:['30мл','60мл'], volumeIndex:0,
     description:'Классическая кола с лёгкой лаймовой кислинкой. Сбалансированная сладость, лёгкий бросок в горло.'},
 ];
